@@ -1,8 +1,29 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { MedicalIcon } from './icons/MedicalIcon';
 
 const Header: React.FC = () => {
+  const navigate = useNavigate();
+  // We use a simple state to force re-render when auth status changes.
+  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('userSession'));
+
+  // This effect listens for storage changes to update the header across tabs
+  useEffect(() => {
+    const handleStorageChange = () => {
+      setIsLoggedIn(!!localStorage.getItem('userSession'));
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('userSession');
+    setIsLoggedIn(false);
+    navigate('/login');
+  };
+
   return (
     <header className="bg-white/80 backdrop-blur-lg sticky top-0 z-40 border-b border-slate-200">
       <div className="container mx-auto px-6 py-4 flex justify-between items-center">
@@ -18,12 +39,28 @@ const Header: React.FC = () => {
           </nav>
           <div className="h-6 w-px bg-slate-200" />
           <div className="flex items-center gap-4">
-            <a href="/#login" className="font-semibold text-primary hover:text-primary/80 transition-colors">
-              Log In
-            </a>
-            <a href="/#pricing" className="bg-primary text-white font-semibold px-5 py-2 rounded-lg hover:bg-primary-700 transition-colors shadow-sm hover:shadow-md">
-              Get Started
-            </a>
+            {isLoggedIn ? (
+              <>
+                <Link to="/dashboard" className="font-semibold text-primary hover:text-primary/80 transition-colors">
+                  Dashboard
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="bg-slate-200 text-slate-800 font-semibold px-5 py-2 rounded-lg hover:bg-slate-300 transition-colors shadow-sm hover:shadow-md"
+                >
+                  Log Out
+                </button>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className="font-semibold text-primary hover:text-primary/80 transition-colors">
+                  Log In
+                </Link>
+                <a href="/#pricing" className="bg-primary text-white font-semibold px-5 py-2 rounded-lg hover:bg-primary-700 transition-colors shadow-sm hover:shadow-md">
+                  Get Started
+                </a>
+              </>
+            )}
           </div>
         </div>
       </div>

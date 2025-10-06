@@ -20,4 +20,5 @@ export interface SignUpFormData {
   phone: string;
   email: string;
   subdomain: string;
+  password?: string;
 }
