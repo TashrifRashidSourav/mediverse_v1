@@ -22,11 +22,11 @@ const LoginPage: React.FC = () => {
     const users = JSON.parse(localStorage.getItem('users') || '[]');
     const user = users.find((u: any) => u.email === email && u.password === password);
 
-    if (user) {
+    if (user && user.subdomain) {
       // Create a session for the user
       localStorage.setItem('userSession', JSON.stringify(user));
       window.dispatchEvent(new Event('storage')); // Notify header to update
-      navigate('/dashboard');
+      navigate(`/${user.subdomain}/dashboard`);
     } else {
       setError('Invalid email or password.');
     }

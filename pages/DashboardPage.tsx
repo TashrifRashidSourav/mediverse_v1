@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams, Navigate } from 'react-router-dom';
 
 interface UserSession {
   email: string;
@@ -9,24 +9,48 @@ interface UserSession {
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
+  const { subdomain } = useParams<{ subdomain: string }>();
   const [user, setUser] = useState<UserSession | null>(null);
+  const [isValid, setIsValid] = useState<boolean | null>(null);
 
   useEffect(() => {
     const sessionData = localStorage.getItem('userSession');
     if (sessionData) {
-      setUser(JSON.parse(sessionData));
+      const parsedSession = JSON.parse(sessionData);
+      setUser(parsedSession);
+      // Validate that the URL subdomain matches the session subdomain
+      if (parsedSession.subdomain === subdomain) {
+        setIsValid(true);
+      } else {
+        setIsValid(false);
+      }
+    } else {
+      // Should be caught by ProtectedRoute, but as a fallback
+      setIsValid(false);
     }
-  }, []);
+  }, [subdomain]);
 
   const handleLogout = () => {
     localStorage.removeItem('userSession');
     window.dispatchEvent(new Event('storage')); // Notify header to update
     navigate('/login');
   };
+  
+  // While checking validity
+  if (isValid === null) {
+    return <div className="min-h-screen flex items-center justify-center bg-slate-100"><p>Verifying session...</p></div>;
+  }
+  
+  // If subdomain in URL doesn't match session, redirect to the correct dashboard URL
+  if (!isValid && user) {
+     return <Navigate to={`/${user.subdomain}/dashboard`} replace />;
+  }
 
   if (!user) {
-    return <div className="min-h-screen flex items-center justify-center bg-slate-100"><p>Loading user data...</p></div>;
+    // This case should be handled by ProtectedRoute, but it's a safe fallback.
+    return <Navigate to="/login" replace />;
   }
+
 
   return (
     <div className="min-h-screen bg-slate-100 font-sans">

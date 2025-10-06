@@ -2,15 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { MedicalIcon } from './icons/MedicalIcon';
 
+interface UserSession {
+  subdomain: string;
+}
+
 const Header: React.FC = () => {
   const navigate = useNavigate();
-  // We use a simple state to force re-render when auth status changes.
-  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('userSession'));
+  const [session, setSession] = useState<UserSession | null>(() => {
+    const storedSession = localStorage.getItem('userSession');
+    return storedSession ? JSON.parse(storedSession) : null;
+  });
 
-  // This effect listens for storage changes to update the header across tabs
   useEffect(() => {
     const handleStorageChange = () => {
-      setIsLoggedIn(!!localStorage.getItem('userSession'));
+      const storedSession = localStorage.getItem('userSession');
+      setSession(storedSession ? JSON.parse(storedSession) : null);
     };
     window.addEventListener('storage', handleStorageChange);
     return () => {
@@ -20,9 +26,11 @@ const Header: React.FC = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('userSession');
-    setIsLoggedIn(false);
+    setSession(null);
     navigate('/login');
   };
+
+  const dashboardPath = session ? `/${session.subdomain}/dashboard` : '/dashboard';
 
   return (
     <header className="bg-white/80 backdrop-blur-lg sticky top-0 z-40 border-b border-slate-200">
@@ -39,9 +47,9 @@ const Header: React.FC = () => {
           </nav>
           <div className="h-6 w-px bg-slate-200" />
           <div className="flex items-center gap-4">
-            {isLoggedIn ? (
+            {session ? (
               <>
-                <Link to="/dashboard" className="font-semibold text-primary hover:text-primary/80 transition-colors">
+                <Link to={dashboardPath} className="font-semibold text-primary hover:text-primary/80 transition-colors">
                   Dashboard
                 </Link>
                 <button

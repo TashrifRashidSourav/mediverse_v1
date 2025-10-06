@@ -13,7 +13,7 @@ const App: React.FC = () => {
       <Route path="/signup" element={<SignUpPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route 
-        path="/dashboard" 
+        path="/:subdomain/dashboard" 
         element={
           <ProtectedRoute>
             <DashboardPage />

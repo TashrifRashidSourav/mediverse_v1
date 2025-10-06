@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { type Plan, type SignUpFormData } from '../types';
 import { XIcon } from './icons/XIcon';
@@ -10,6 +11,7 @@ interface SignUpModalProps {
 }
 
 const SignUpModal: React.FC<SignUpModalProps> = ({ isOpen, onClose, plan }) => {
+  // FIX: Added 'password' to satisfy the SignUpFormData type.
   const [formData, setFormData] = useState<SignUpFormData>({
     hospitalName: '',
     location: '',
@@ -17,6 +19,7 @@ const SignUpModal: React.FC<SignUpModalProps> = ({ isOpen, onClose, plan }) => {
     phone: '',
     email: '',
     subdomain: '',
+    password: '',
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
