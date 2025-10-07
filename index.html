@@ -6,21 +6,45 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Mediverse - Your Hospital's Digital Front Door</title>
 
-    <!-- Tailwind (optional) -->
+    <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
-        theme: { extend: { colors: { primary: { DEFAULT: '#0D9488','50':'#F0FDFA','100':'#CCFBF1','200':'#99F6E4','300':'#5EEAD4','400':'#2DD4BF','500':'#14B8A6','600':'#0D9488','700':'#0F766E','800':'#115E59','900':'#134E4A','950':'#042F2E' }}}}
+        theme: {
+          extend: {
+            colors: {
+              primary: {
+                DEFAULT:'#0D9488','50':'#F0FDFA','100':'#CCFBF1','200':'#99F6E4',
+                '300':'#5EEAD4','400':'#2DD4BF','500':'#14B8A6','600':'#0D9488',
+                '700':'#0F766E','800':'#115E59','900':'#134E4A','950':'#042F2E'
+              }
+            }
+          }
+        }
       }
     </script>
-    <!-- 🔥 Import map removed so Vite uses node_modules React/ReactDOM -->
-  <script type="importmap">
+
+    <!-- UMD globals for dependencies (no build step) -->
+    <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/react-router@6.23.1/umd/react-router.production.min.js"></script>
+    <script src="https://unpkg.com/react-router-dom@6.23.1/umd/react-router-dom.production.min.js"></script>
+
+    <!-- Firebase v8 UMD (compat, adds `firebase` to global scope) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <!-- In-browser JSX/TSX transform via Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script type="importmap">
 {
   "imports": {
     "react": "https://aistudiocdn.com/react@^19.2.0",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
     "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.3",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/"
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "firebase/": "https://aistudiocdn.com/firebase@^12.3.0/"
   }
 }
 </script>
@@ -28,6 +52,12 @@
 </head>
   <body class="bg-slate-50">
     <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
-  </body>
+
+    <!--
+      This single script tag loads and compiles your main application entrypoint.
+      It uses the UMD globals loaded above for dependencies.
+    -->
+    <script type="text/babel" data-type="module" src="/index.tsx"></script>
+  <script type="module" src="/index.tsx"></script>
+</body>
 </html>

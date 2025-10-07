@@ -4,6 +4,8 @@ import HomePage from './pages/HomePage';
 import SignUpPage from './pages/SignUpPage';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
+import HospitalSitePage from './pages/HospitalSitePage';
+import NotFoundPage from './pages/NotFoundPage';
 import ProtectedRoute from './components/ProtectedRoute';
 
 const App: React.FC = () => {
@@ -12,6 +14,7 @@ const App: React.FC = () => {
       <Route path="/" element={<HomePage />} />
       <Route path="/signup" element={<SignUpPage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/:subdomain" element={<HospitalSitePage />} />
       <Route 
         path="/:subdomain/dashboard" 
         element={
@@ -20,6 +23,7 @@ const App: React.FC = () => {
           </ProtectedRoute>
         } 
       />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 };
