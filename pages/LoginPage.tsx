@@ -3,6 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { MedicalIcon } from '../components/icons/MedicalIcon';
+import { auth, db } from '../firebase';
+import { User } from '../types';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -16,21 +18,29 @@ const LoginPage: React.FC = () => {
     setError('');
     setIsSubmitting(true);
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      // Sign in with Firebase Auth (v8 style)
+      const userCredential = await auth.signInWithEmailAndPassword(email, password);
+      const user = userCredential.user!;
 
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const user = users.find((u: any) => u.email === email && u.password === password);
+      // Fetch user profile from Firestore to get the subdomain (v8 style)
+      const userDocRef = db.collection('users').doc(user.uid);
+      const userDoc = await userDocRef.get();
 
-    if (user && user.subdomain) {
-      // Create a session for the user
-      localStorage.setItem('userSession', JSON.stringify(user));
-      window.dispatchEvent(new Event('storage')); // Notify header to update
-      navigate(`/${user.subdomain}/dashboard`);
-    } else {
+      if (userDoc.exists) {
+        const userData = userDoc.data() as User;
+        // Save non-sensitive part of profile to localStorage for easy access in header/dashboard
+        localStorage.setItem('userProfile', JSON.stringify({ uid: user.uid, subdomain: userData.subdomain, hospitalName: userData.hospitalName }));
+        navigate(`/${userData.subdomain}/dashboard`);
+      } else {
+        throw new Error("User profile not found.");
+      }
+    } catch (err: any) {
       setError('Invalid email or password.');
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsSubmitting(false);
   };
 
   return (

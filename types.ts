@@ -15,10 +15,18 @@ export interface Plan {
 
 export interface SignUpFormData {
   hospitalName: string;
-  location: string;
-  registrationNumber: string;
-  phone: string;
+  location?: string; // Made optional for simplicity
+  registrationNumber?: string; // Made optional for simplicity
+  phone?: string; // Made optional for simplicity
   email: string;
   subdomain: string;
   password: string;
+}
+
+export interface User {
+  uid: string; // From Firebase Auth
+  email: string;
+  hospitalName: string;
+  subdomain: string;
+  plan: PlanTier;
 }
