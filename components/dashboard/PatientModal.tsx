@@ -93,8 +93,9 @@ const PatientModal: React.FC<PatientModalProps> = ({ isOpen, onClose, onSave, pa
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <label htmlFor="status" className="font-semibold text-slate-700 block mb-1.5">Status*</label>
+                  {/* FIX: Use String(s) for the key to fix TypeScript error where s is inferred as 'unknown'. */}
                   <select id="status" name="status" value={formData.status} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" required>
-                    {Object.values(PatientStatus).map(s => <option key={s} value={s}>{s}</option>)}
+                    {Object.values(PatientStatus).map(s => <option key={String(s)} value={s}>{s}</option>)}
                   </select>
                 </div>
                 <div>
