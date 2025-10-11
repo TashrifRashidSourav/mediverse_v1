@@ -1,4 +1,5 @@
 
+
 export enum PlanTier {
   General = 'General',
   Premium = 'Premium',
@@ -29,4 +30,42 @@ export interface User {
   hospitalName: string;
   subdomain: string;
   plan: PlanTier;
+}
+
+export interface Doctor {
+  id: string;
+  name: string;
+  specialization: string;
+  phone: string;
+  email: string;
+}
+
+export enum PatientStatus {
+  Admitted = 'Admitted',
+  Discharged = 'Discharged',
+  Outpatient = 'Outpatient',
+}
+
+export interface Patient {
+  id: string;
+  name: string;
+  age: number;
+  gender: 'Male' | 'Female' | 'Other';
+  status: PatientStatus;
+  admittedDate: string; // ISO string
+}
+
+export enum AppointmentStatus {
+  Scheduled = 'Scheduled',
+  Completed = 'Completed',
+  Cancelled = 'Cancelled',
+}
+
+export interface Appointment {
+  id: string;
+  patientName: string;
+  doctorName: string;
+  date: string; // ISO string
+  time: string; // e.g., '10:30 AM'
+  status: AppointmentStatus;
 }

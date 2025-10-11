@@ -16,7 +16,7 @@ const App: React.FC = () => {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/:subdomain" element={<HospitalSitePage />} />
       <Route 
-        path="/:subdomain/dashboard" 
+        path="/:subdomain/dashboard/*" 
         element={
           <ProtectedRoute>
             <DashboardPage />
