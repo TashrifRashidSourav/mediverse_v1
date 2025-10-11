@@ -68,7 +68,7 @@ const DashboardPage: React.FC = () => {
   if (userProfile.plan === PlanTier.Golden) {
     return (
       <div className="flex h-screen bg-slate-100 font-sans">
-        <Sidebar hospitalName={userProfile.hospitalName} />
+        <Sidebar hospitalName={userProfile.hospitalName} subdomain={subdomain!} />
         <div className="flex-1 flex flex-col overflow-hidden">
           <header className="bg-white border-b border-slate-200">
             <div className="flex items-center justify-end h-16 px-6">

@@ -2,6 +2,7 @@
 import firebase from "firebase/compat/app";
 import "firebase/compat/auth";
 import "firebase/compat/firestore";
+import "firebase/compat/storage";
 import { firebaseConfig } from "./firebaseConfig";
 
 if (!firebase.apps.length) {
@@ -31,6 +32,7 @@ firebase.firestore.setLogLevel?.("debug");
 
 // ---- Auth ----
 const auth = firebase.auth();
+const storage = firebase.storage();
 
 /**
  * Dev helper: email/password login.
@@ -42,4 +44,4 @@ export async function loginDevWithEmail(email: string, password: string) {
   return cred.user;
 }
 
-export { auth, db, firebase };
+export { auth, db, storage, firebase };
