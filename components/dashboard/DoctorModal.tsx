@@ -6,12 +6,46 @@ import { UserCircleIcon } from '../icons/UserCircleIcon';
 interface DoctorModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (doctorData: Omit<Doctor, 'id'>, imageFile: File | null) => void;
-  doctor: Doctor | null; // Pass doctor data for editing
+  onSave: (doctorData: Omit<Doctor, 'id'>) => void;
+  doctor: Doctor | null;
 }
 
+const imageResizer = (file: File, maxWidth: number, maxHeight: number, quality: number = 0.8): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target?.result as string;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let { width, height } = img;
+                if (width > height) {
+                    if (width > maxWidth) {
+                        height *= maxWidth / width;
+                        width = maxWidth;
+                    }
+                } else {
+                    if (height > maxHeight) {
+                        width *= maxHeight / height;
+                        height = maxHeight;
+                    }
+                }
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return reject(new Error('Could not get canvas context'));
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+            img.onerror = error => reject(error);
+        };
+        reader.onerror = error => reject(error);
+    });
+};
+
 const DoctorModal: React.FC<DoctorModalProps> = ({ isOpen, onClose, onSave, doctor }) => {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<Omit<Doctor, 'id'>>({
     name: '',
     specialization: '',
     qualifications: '',
@@ -19,7 +53,6 @@ const DoctorModal: React.FC<DoctorModalProps> = ({ isOpen, onClose, onSave, doct
     email: '',
     imageUrl: '',
   });
-  const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -35,7 +68,6 @@ const DoctorModal: React.FC<DoctorModalProps> = ({ isOpen, onClose, onSave, doct
       });
       setImagePreview(doctor.imageUrl || null);
     } else {
-      // Reset form for 'Add New'
       setFormData({
         name: '',
         specialization: '',
@@ -44,34 +76,33 @@ const DoctorModal: React.FC<DoctorModalProps> = ({ isOpen, onClose, onSave, doct
         email: '',
         imageUrl: '',
       });
-      setImageFile(null);
       setImagePreview(null);
     }
   }, [doctor, isOpen]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      setImageFile(file);
-      setImagePreview(URL.createObjectURL(file));
+      const resizedDataUrl = await imageResizer(file, 400, 400);
+      setImagePreview(resizedDataUrl);
+      setFormData(prev => ({...prev, imageUrl: resizedDataUrl}));
     }
   };
   
   const handleRemoveImage = () => {
-    setImageFile(null);
-    setImagePreview(null);
-    setFormData(prev => ({ ...prev, imageUrl: '' }));
+      setImagePreview(null);
+      setFormData(prev => ({...prev, imageUrl: ''}));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    await onSave(formData, imageFile);
+    await onSave(formData);
     setIsSubmitting(false);
   };
 
@@ -86,56 +117,50 @@ const DoctorModal: React.FC<DoctorModalProps> = ({ isOpen, onClose, onSave, doct
         <form onSubmit={handleSubmit}>
           <div className="p-8">
             <div className="flex justify-between items-start">
-              <h2 className="text-2xl font-bold text-slate-900">{doctor ? 'Edit Doctor' : 'Add New Doctor'}</h2>
+              <h2 className="text-2xl font-bold text-slate-900">{doctor ? 'Edit Doctor Profile' : 'Add New Doctor'}</h2>
               <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600">
                 <XIcon className="h-6 w-6" />
               </button>
             </div>
 
             <div className="mt-6 space-y-5">
-              <div className="flex items-center gap-4">
-                {imagePreview ? (
-                    <img src={imagePreview} alt="Profile Preview" className="h-20 w-20 rounded-full object-cover" />
-                ) : (
-                    <UserCircleIcon className="h-20 w-20 text-slate-300" />
-                )}
-                <div className="flex items-center gap-3">
-                  <label htmlFor="imageUpload" className="cursor-pointer bg-slate-100 text-slate-700 font-semibold py-2 px-4 rounded-lg hover:bg-slate-200 text-sm">
-                    {imagePreview ? 'Change Photo' : 'Upload Photo'}
-                  </label>
-                  <input type="file" id="imageUpload" accept="image/*" onChange={handleImageChange} className="hidden" />
-                  {imagePreview && (
-                    <button type="button" onClick={handleRemoveImage} className="text-sm text-red-600 hover:underline">
-                        Remove
-                    </button>
-                  )}
+              <div className="flex items-center gap-6">
+                <div className="w-24 h-24 rounded-full bg-slate-100 flex-shrink-0 flex items-center justify-center overflow-hidden">
+                    {imagePreview ? <img src={imagePreview} alt="Doctor" className="w-full h-full object-cover" /> : <UserCircleIcon className="h-16 w-16 text-slate-400"/>}
                 </div>
-              </div>
-            
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div>
-                  <label htmlFor="name" className="font-semibold text-slate-700 block mb-1.5">Full Name*</label>
-                  <input type="text" id="name" name="name" value={formData.name} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" required />
-                </div>
-                <div>
-                  <label htmlFor="specialization" className="font-semibold text-slate-700 block mb-1.5">Specialization*</label>
-                  <input type="text" id="specialization" name="specialization" value={formData.specialization} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" required />
+                <div className="flex flex-col gap-2">
+                    <label htmlFor="imageUpload" className="cursor-pointer text-sm font-semibold text-primary bg-primary-50 hover:bg-primary-100 px-4 py-2 rounded-full text-center">
+                      Choose Photo
+                    </label>
+                    <input type="file" id="imageUpload" onChange={handleImageChange} accept="image/png, image/jpeg" className="hidden"/>
+                    {imagePreview && (
+                        <button type="button" onClick={handleRemoveImage} className="text-sm text-slate-500 hover:text-red-600">Remove Photo</button>
+                    )}
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                 <div>
+                    <label htmlFor="name" className="font-semibold text-slate-700 block mb-1.5">Full Name*</label>
+                    <input type="text" id="name" name="name" value={formData.name} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" required />
+                 </div>
+                 <div>
+                    <label htmlFor="specialization" className="font-semibold text-slate-700 block mb-1.5">Specialization*</label>
+                    <input type="text" id="specialization" name="specialization" value={formData.specialization} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" required />
+                 </div>
+              </div>
               <div>
-                <label htmlFor="qualifications" className="font-semibold text-slate-700 block mb-1.5">Qualifications*</label>
-                <input type="text" id="qualifications" name="qualifications" value={formData.qualifications} placeholder="e.g., MD, FACS" onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" required />
+                  <label htmlFor="qualifications" className="font-semibold text-slate-700 block mb-1.5">Qualifications (e.g., MBBS, MD)</label>
+                  <input type="text" id="qualifications" name="qualifications" value={formData.qualifications} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" />
               </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <label htmlFor="phone" className="font-semibold text-slate-700 block mb-1.5">Phone Number*</label>
-                  <input type="tel" id="phone" name="phone" value={formData.phone} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" required />
+                  <label htmlFor="phone" className="font-semibold text-slate-700 block mb-1.5">Phone Number</label>
+                  <input type="tel" id="phone" name="phone" value={formData.phone} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" />
                 </div>
                 <div>
-                  <label htmlFor="email" className="font-semibold text-slate-700 block mb-1.5">Email Address*</label>
-                  <input type="email" id="email" name="email" value={formData.email} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" required />
+                  <label htmlFor="email" className="font-semibold text-slate-700 block mb-1.5">Email Address</label>
+                  <input type="email" id="email" name="email" value={formData.email} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" />
                 </div>
               </div>
             </div>
