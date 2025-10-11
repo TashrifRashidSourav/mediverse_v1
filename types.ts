@@ -36,8 +36,10 @@ export interface Doctor {
   id: string;
   name: string;
   specialization: string;
+  qualifications: string;
   phone: string;
   email: string;
+  imageUrl?: string;
 }
 
 export enum PatientStatus {

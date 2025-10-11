@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useParams } from 'react-router-dom';
 import { MedicalIcon } from '../icons/MedicalIcon';
 import { LayoutDashboardIcon } from '../icons/LayoutDashboardIcon';
 import { StethoscopeIcon } from '../icons/StethoscopeIcon';
@@ -11,6 +11,7 @@ import { ReportsIcon } from '../icons/ReportsIcon';
 
 interface SidebarProps {
   hospitalName: string;
+  subdomain: string;
 }
 
 const NavItem: React.FC<{ to: string, icon: React.ReactNode, label: string }> = ({ to, icon, label }) => {
@@ -21,7 +22,7 @@ const NavItem: React.FC<{ to: string, icon: React.ReactNode, label: string }> = 
   return (
     <NavLink
       to={to}
-      end // ensures exact match for the home dashboard link
+      end
       className={({ isActive }) => `${baseClasses} ${isActive ? activeClasses : inactiveClasses}`}
     >
       {icon}
@@ -31,15 +32,16 @@ const NavItem: React.FC<{ to: string, icon: React.ReactNode, label: string }> = 
 };
 
 
-const Sidebar: React.FC<SidebarProps> = ({ hospitalName }) => {
+const Sidebar: React.FC<SidebarProps> = ({ hospitalName, subdomain }) => {
+  const dashboardBaseUrl = `/${subdomain}/dashboard`;
   const navItems = [
-    { to: '', icon: <LayoutDashboardIcon className="h-5 w-5" />, label: 'Dashboard' },
-    { to: 'doctors', icon: <StethoscopeIcon className="h-5 w-5" />, label: 'Doctors' },
-    { to: 'patients', icon: <UsersIcon className="h-5 w-5" />, label: 'Patients' },
-    { to: 'appointments', icon: <CalendarIcon className="h-5 w-5" />, label: 'Appointments' },
-    { to: 'billing', icon: <BillingIcon className="h-5 w-5" />, label: 'Billing' },
-    { to: 'inventory', icon: <InventoryIcon className="h-5 w-5" />, label: 'Inventory' },
-    { to: 'reports', icon: <ReportsIcon className="h-5 w-5" />, label: 'Reports' },
+    { to: dashboardBaseUrl, icon: <LayoutDashboardIcon className="h-5 w-5" />, label: 'Dashboard' },
+    { to: `${dashboardBaseUrl}/doctors`, icon: <StethoscopeIcon className="h-5 w-5" />, label: 'Doctors' },
+    { to: `${dashboardBaseUrl}/patients`, icon: <UsersIcon className="h-5 w-5" />, label: 'Patients' },
+    { to: `${dashboardBaseUrl}/appointments`, icon: <CalendarIcon className="h-5 w-5" />, label: 'Appointments' },
+    { to: `${dashboardBaseUrl}/billing`, icon: <BillingIcon className="h-5 w-5" />, label: 'Billing' },
+    { to: `${dashboardBaseUrl}/inventory`, icon: <InventoryIcon className="h-5 w-5" />, label: 'Inventory' },
+    { to: `${dashboardBaseUrl}/reports`, icon: <ReportsIcon className="h-5 w-5" />, label: 'Reports' },
   ];
 
   return (
@@ -52,7 +54,7 @@ const Sidebar: React.FC<SidebarProps> = ({ hospitalName }) => {
       </div>
       <nav className="flex-1 px-4 py-6 space-y-2">
         {navItems.map(item => (
-            <NavItem key={item.to} to={item.to} icon={item.icon} label={item.label} />
+            <NavItem key={item.label} to={item.to} icon={item.icon} label={item.label} />
         ))}
       </nav>
       <div className="px-4 py-4 border-t border-slate-800 text-center text-xs text-slate-500">
