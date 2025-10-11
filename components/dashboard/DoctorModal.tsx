@@ -61,6 +61,12 @@ const DoctorModal: React.FC<DoctorModalProps> = ({ isOpen, onClose, onSave, doct
       setImagePreview(URL.createObjectURL(file));
     }
   };
+  
+  const handleRemoveImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    setFormData(prev => ({ ...prev, imageUrl: '' }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,11 +99,16 @@ const DoctorModal: React.FC<DoctorModalProps> = ({ isOpen, onClose, onSave, doct
                 ) : (
                     <UserCircleIcon className="h-20 w-20 text-slate-300" />
                 )}
-                <div>
+                <div className="flex items-center gap-3">
                   <label htmlFor="imageUpload" className="cursor-pointer bg-slate-100 text-slate-700 font-semibold py-2 px-4 rounded-lg hover:bg-slate-200 text-sm">
-                    Upload Photo
+                    {imagePreview ? 'Change Photo' : 'Upload Photo'}
                   </label>
                   <input type="file" id="imageUpload" accept="image/*" onChange={handleImageChange} className="hidden" />
+                  {imagePreview && (
+                    <button type="button" onClick={handleRemoveImage} className="text-sm text-red-600 hover:underline">
+                        Remove
+                    </button>
+                  )}
                 </div>
               </div>
             

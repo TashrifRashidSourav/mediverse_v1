@@ -74,25 +74,51 @@ const DoctorManagement: React.FC = () => {
         const collectionRef = db.collection('users').doc(currentUser.uid).collection('doctors');
 
         try {
-            let imageUrl = editingDoctor?.imageUrl || doctorData.imageUrl || '';
-
-            // Handle image upload
-            if (imageFile) {
-                const imageId = editingDoctor ? editingDoctor.id : collectionRef.doc().id;
-                const imagePath = `doctors/${currentUser.uid}/${imageId}/${imageFile.name}`;
-                const imageRef = storage.ref(imagePath);
-                await imageRef.put(imageFile);
-                imageUrl = await imageRef.getDownloadURL();
-            }
-            
-            const dataToSave = { ...doctorData, imageUrl };
-            
+            // Case 1: Updating an existing doctor
             if (editingDoctor) {
-                // Update existing doctor
-                await collectionRef.doc(editingDoctor.id).update(dataToSave);
+                const doctorRef = collectionRef.doc(editingDoctor.id);
+                let finalImageUrl = doctorData.imageUrl || '';
+
+                // A new image is being uploaded (replacing old one)
+                if (imageFile) {
+                    // If there was an old image, delete it first
+                    if (editingDoctor.imageUrl) {
+                        try {
+                            const oldImageRef = storage.refFromURL(editingDoctor.imageUrl);
+                            await oldImageRef.delete();
+                        } catch (e) {
+                            console.warn("Could not delete old image, it might not exist.", e);
+                        }
+                    }
+                    const imagePath = `doctors/${currentUser.uid}/${editingDoctor.id}/${imageFile.name}`;
+                    const newImageRef = storage.ref(imagePath);
+                    await newImageRef.put(imageFile);
+                    finalImageUrl = await newImageRef.getDownloadURL();
+                }
+                // Image was removed by the user (and not replaced)
+                else if (editingDoctor.imageUrl && !doctorData.imageUrl) {
+                    const oldImageRef = storage.refFromURL(editingDoctor.imageUrl);
+                    await oldImageRef.delete();
+                    finalImageUrl = '';
+                }
+
+                const dataToSave = { ...doctorData, imageUrl: finalImageUrl };
+                await doctorRef.update(dataToSave);
+            
+            // Case 2: Adding a new doctor
             } else {
-                // Add new doctor
-                await collectionRef.add(dataToSave);
+                const newDoctorRef = collectionRef.doc(); // Create ref with new ID upfront
+                let finalImageUrl = '';
+
+                if (imageFile) {
+                    const imagePath = `doctors/${currentUser.uid}/${newDoctorRef.id}/${imageFile.name}`;
+                    const imageRef = storage.ref(imagePath);
+                    await imageRef.put(imageFile);
+                    finalImageUrl = await imageRef.getDownloadURL();
+                }
+                
+                const dataToSave = { ...doctorData, imageUrl: finalImageUrl };
+                await newDoctorRef.set(dataToSave); // Use .set() on the new ref
             }
             
             setModalOpen(false);
