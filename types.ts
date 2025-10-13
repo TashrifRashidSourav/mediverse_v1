@@ -38,6 +38,7 @@ export interface Doctor {
     phone: string;
     email: string;
     imageUrl?: string;
+    password?: string; // For doctor portal login
 }
 
 export enum PatientStatus {
@@ -70,7 +71,9 @@ export enum AppointmentStatus {
 
 export interface Appointment {
     id: string;
+    patientId: string; // New: link to patient ID
     patientName: string;
+    doctorId: string; // New: link to doctor ID
     doctorName: string;
     date: string; // ISO string date part
     time: string; // HH:mm format
@@ -106,4 +109,27 @@ export interface SiteSettings {
     services: ServiceItem[];
     testimonials: Testimonial[];
     socialLinks: SocialLink[];
+}
+
+export interface Medication {
+    id: string;
+    name: string;
+    dosage: string;
+    frequency: string;
+    duration: string;
+}
+
+export interface Prescription {
+    id: string;
+    patientId: string;
+    patientName: string;
+    patientAge: number;
+    patientGender: 'Male' | 'Female' | 'Other';
+    doctorId: string;
+    doctorName: string;
+    hospitalId: string;
+    date: string; // ISO string
+    medications: Medication[];
+    tests: string; // simple textarea for now
+    advice: string; // simple textarea for now
 }
