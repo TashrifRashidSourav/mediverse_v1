@@ -54,6 +54,11 @@ export interface Patient {
     gender: 'Male' | 'Female' | 'Other';
     status: PatientStatus;
     admittedDate: string; // ISO string
+    phone: string; // Mandatory and unique per hospital
+    email?: string;
+    authUid?: string; // UID from Firebase Auth
+    weight?: number; // in kg
+    profilePictureUrl?: string;
 }
 
 export enum AppointmentStatus {

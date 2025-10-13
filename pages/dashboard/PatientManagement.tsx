@@ -122,6 +122,7 @@ const PatientManagement: React.FC = () => {
                         <thead className="bg-slate-50">
                             <tr>
                                 <th className="p-4 font-semibold text-slate-600">Name</th>
+                                <th className="p-4 font-semibold text-slate-600">Phone</th>
                                 <th className="p-4 font-semibold text-slate-600">Age</th>
                                 <th className="p-4 font-semibold text-slate-600">Gender</th>
                                 <th className="p-4 font-semibold text-slate-600">Status</th>
@@ -131,13 +132,14 @@ const PatientManagement: React.FC = () => {
                         </thead>
                         <tbody>
                             {isLoading ? (
-                                <tr><td colSpan={6} className="text-center p-8 text-slate-500">Loading patients...</td></tr>
+                                <tr><td colSpan={7} className="text-center p-8 text-slate-500">Loading patients...</td></tr>
                             ) : patients.length === 0 ? (
-                                <tr><td colSpan={6} className="text-center p-8 text-slate-500">No patient records found.</td></tr>
+                                <tr><td colSpan={7} className="text-center p-8 text-slate-500">No patient records found.</td></tr>
                             ) : (
                                 patients.map(patient => (
                                     <tr key={patient.id} className="border-t border-slate-200">
                                         <td className="p-4 font-semibold text-slate-800">{patient.name}</td>
+                                        <td className="p-4 text-slate-700">{patient.phone}</td>
                                         <td className="p-4 text-slate-700">{patient.age}</td>
                                         <td className="p-4 text-slate-700">{patient.gender}</td>
                                         <td className="p-4">

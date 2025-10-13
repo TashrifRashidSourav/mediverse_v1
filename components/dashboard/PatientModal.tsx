@@ -16,6 +16,8 @@ const PatientModal: React.FC<PatientModalProps> = ({ isOpen, onClose, onSave, pa
     gender: 'Other' as 'Male' | 'Female' | 'Other',
     status: PatientStatus.Admitted,
     admittedDate: new Date().toISOString().split('T')[0],
+    phone: '',
+    weight: 0,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -27,6 +29,8 @@ const PatientModal: React.FC<PatientModalProps> = ({ isOpen, onClose, onSave, pa
         gender: patient.gender,
         status: patient.status,
         admittedDate: new Date(patient.admittedDate).toISOString().split('T')[0],
+        phone: patient.phone,
+        weight: patient.weight || 0,
       });
     } else {
       // Reset form for 'Add New'
@@ -36,19 +40,26 @@ const PatientModal: React.FC<PatientModalProps> = ({ isOpen, onClose, onSave, pa
         gender: 'Other',
         status: PatientStatus.Admitted,
         admittedDate: new Date().toISOString().split('T')[0],
+        phone: '',
+        weight: 0,
       });
     }
   }, [patient, isOpen]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: name === 'age' ? Number(value) : value }));
+    setFormData(prev => ({ ...prev, [name]: name === 'age' || name === 'weight' ? Number(value) : value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    await onSave(formData);
+    // Construct the object without the optional fields if they are empty
+    const patientDataToSave: Omit<Patient, 'id'> = {
+        ...formData,
+        ...(formData.weight > 0 ? { weight: formData.weight } : { weight: undefined }),
+    };
+    await onSave(patientDataToSave);
     setIsSubmitting(false);
   };
 
@@ -70,15 +81,21 @@ const PatientModal: React.FC<PatientModalProps> = ({ isOpen, onClose, onSave, pa
             </div>
 
             <div className="mt-6 space-y-5">
-              <div>
-                <label htmlFor="name" className="font-semibold text-slate-700 block mb-1.5">Full Name*</label>
-                <input type="text" id="name" name="name" value={formData.name} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" required />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                 <div>
+                    <label htmlFor="name" className="font-semibold text-slate-700 block mb-1.5">Full Name*</label>
+                    <input type="text" id="name" name="name" value={formData.name} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" required />
+                 </div>
+                 <div>
+                    <label htmlFor="phone" className="font-semibold text-slate-700 block mb-1.5">Phone Number*</label>
+                    <input type="tel" id="phone" name="phone" value={formData.phone} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" required />
+                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <label htmlFor="age" className="font-semibold text-slate-700 block mb-1.5">Age*</label>
-                  <input type="number" id="age" name="age" value={formData.age} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" required />
+                  <input type="number" id="age" name="age" min="0" value={formData.age} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" required />
                 </div>
                 <div>
                   <label htmlFor="gender" className="font-semibold text-slate-700 block mb-1.5">Gender*</label>
@@ -91,18 +108,23 @@ const PatientModal: React.FC<PatientModalProps> = ({ isOpen, onClose, onSave, pa
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div>
-                  <label htmlFor="status" className="font-semibold text-slate-700 block mb-1.5">Status*</label>
-                  {/* FIX: Use String(s) for the key to fix TypeScript error where s is inferred as 'unknown'. */}
-                  <select id="status" name="status" value={formData.status} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" required>
-                    {Object.values(PatientStatus).map(s => <option key={String(s)} value={s}>{s}</option>)}
-                  </select>
-                </div>
-                <div>
+                  <div>
+                    <label htmlFor="weight" className="font-semibold text-slate-700 block mb-1.5">Weight (kg)</label>
+                    <input type="number" id="weight" name="weight" min="0" value={formData.weight} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition"/>
+                  </div>
+                   <div>
+                    <label htmlFor="status" className="font-semibold text-slate-700 block mb-1.5">Status*</label>
+                    <select id="status" name="status" value={formData.status} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" required>
+                      {Object.values(PatientStatus).map(s => <option key={String(s)} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+              </div>
+
+               <div>
                   <label htmlFor="admittedDate" className="font-semibold text-slate-700 block mb-1.5">Admitted Date*</label>
                   <input type="date" id="admittedDate" name="admittedDate" value={formData.admittedDate} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" required />
                 </div>
-              </div>
+
             </div>
           </div>
 
