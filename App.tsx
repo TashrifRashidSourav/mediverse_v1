@@ -25,6 +25,15 @@ import PatientAppointmentsPage from './pages/patient-portal/dashboard/PatientApp
 import PatientPrescriptionsPage from './pages/patient-portal/dashboard/PatientPrescriptionsPage';
 import PatientBillingPage from './pages/patient-portal/dashboard/PatientBillingPage';
 
+// Doctor Portal Imports
+import DoctorLoginPage from './pages/doctor-portal/DoctorLoginPage';
+import DoctorProtectedRoute from './components/doctor-portal/DoctorProtectedRoute';
+import DoctorDashboardPage from './pages/doctor-portal/DoctorDashboardPage';
+import DoctorDashboardHome from './pages/doctor-portal/dashboard/DoctorDashboardHome';
+import DoctorPatientAccessPage from './pages/doctor-portal/dashboard/DoctorPatientAccessPage';
+import DoctorPrescriptionPage from './pages/doctor-portal/dashboard/DoctorPrescriptionPage';
+
+
 const App: React.FC = () => {
   return (
     <Routes>
@@ -66,6 +75,19 @@ const App: React.FC = () => {
         <Route path="settings" element={<WebsiteSettings />} />
       </Route>
       
+      {/* Doctor Portal Routes */}
+      <Route path="/:subdomain/doctor-portal/login" element={<DoctorLoginPage />} />
+      <Route path="/:subdomain/doctor-portal/dashboard" element={
+        <DoctorProtectedRoute>
+          <DoctorDashboardPage />
+        </DoctorProtectedRoute>
+      }>
+        <Route index element={<DoctorDashboardHome />} />
+        <Route path="patients" element={<DoctorPatientAccessPage />} />
+        <Route path="prescription" element={<DoctorPrescriptionPage />} />
+         <Route path="prescription/:patientId" element={<DoctorPrescriptionPage />} />
+      </Route>
+
       {/* Deprecated Patient Portal Routes - redirect or show not found */}
       <Route path="/:subdomain/patient-portal/*" element={<NotFoundPage />} />
 
@@ -77,7 +99,7 @@ const App: React.FC = () => {
 
 const HospitalSitePageWrapper = () => {
     const { subdomain } = useParams<{ subdomain: string }>();
-    const reservedPaths = ['signup', 'login', 'patient']; // Added 'patient'
+    const reservedPaths = ['signup', 'login', 'patient', 'doctor-portal'];
 
     if (subdomain && reservedPaths.includes(subdomain)) {
         return <NotFoundPage />;
