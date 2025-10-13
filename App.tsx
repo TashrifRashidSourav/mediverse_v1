@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, useParams } from 'react-router-dom';
+import { Routes, Route, useParams, Navigate } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import SignUpPage from './pages/SignUpPage';
 import LoginPage from './pages/LoginPage';
@@ -16,6 +16,14 @@ import InventoryPage from './pages/dashboard/InventoryPage';
 import ReportsPage from './pages/dashboard/ReportsPage';
 import WebsiteSettings from './pages/dashboard/WebsiteSettings';
 import PatientLoginPage from './pages/patient-portal/PatientLoginPage';
+import PatientSignUpPage from './pages/patient-portal/PatientSignUpPage';
+import PatientDashboardPage from './pages/patient-portal/PatientDashboardPage';
+import PatientProtectedRoute from './components/patient-portal/PatientProtectedRoute';
+import PatientDashboardHome from './pages/patient-portal/dashboard/PatientDashboardHome';
+import PatientProfilePage from './pages/patient-portal/dashboard/PatientProfilePage';
+import PatientAppointmentsPage from './pages/patient-portal/dashboard/PatientAppointmentsPage';
+import PatientPrescriptionsPage from './pages/patient-portal/dashboard/PatientPrescriptionsPage';
+import PatientBillingPage from './pages/patient-portal/dashboard/PatientBillingPage';
 
 const App: React.FC = () => {
   return (
@@ -24,11 +32,25 @@ const App: React.FC = () => {
       <Route path="/signup" element={<SignUpPage />} />
       <Route path="/login" element={<LoginPage />} />
 
+      {/* NEW: Global Patient Portal Routes */}
+      <Route path="/patient/login" element={<PatientLoginPage />} />
+      <Route path="/patient/signup" element={<PatientSignUpPage />} />
+      <Route path="/patient/dashboard" element={
+        <PatientProtectedRoute>
+          <PatientDashboardPage />
+        </PatientProtectedRoute>
+      }>
+        <Route index element={<Navigate to="profile" replace />} />
+        <Route path="profile" element={<PatientProfilePage />} />
+        <Route path="appointments" element={<PatientAppointmentsPage />} />
+        <Route path="prescriptions" element={<PatientPrescriptionsPage />} />
+        <Route path="billing" element={<PatientBillingPage />} />
+      </Route>
+
       {/* Hospital Subdomain Sites */}
       <Route path="/:subdomain" element={<HospitalSitePageWrapper />} />
-      <Route path="/:subdomain/patient-portal/login" element={<PatientLoginPage />} />
 
-      {/* Dashboard Routes */}
+      {/* Admin Dashboard Routes */}
       <Route path="/:subdomain/dashboard" element={
         <ProtectedRoute>
           <DashboardPage />
@@ -43,6 +65,9 @@ const App: React.FC = () => {
         <Route path="reports" element={<ReportsPage />} />
         <Route path="settings" element={<WebsiteSettings />} />
       </Route>
+      
+      {/* Deprecated Patient Portal Routes - redirect or show not found */}
+      <Route path="/:subdomain/patient-portal/*" element={<NotFoundPage />} />
 
       {/* Fallback 404 Not Found Route */}
       <Route path="*" element={<NotFoundPage />} />
@@ -50,18 +75,15 @@ const App: React.FC = () => {
   );
 };
 
-
-// A small wrapper to handle reserved paths and pass subdomain to HospitalSitePage
 const HospitalSitePageWrapper = () => {
     const { subdomain } = useParams<{ subdomain: string }>();
-    const reservedPaths = ['signup', 'login', 'patient-portal'];
+    const reservedPaths = ['signup', 'login', 'patient']; // Added 'patient'
 
     if (subdomain && reservedPaths.includes(subdomain)) {
         return <NotFoundPage />;
     }
     
-    // Check if subdomain contains a known dashboard path segment
-    if (subdomain?.includes('dashboard') || subdomain?.includes('doctors') || subdomain?.includes('patients')) {
+    if (subdomain?.includes('dashboard') || subdomain?.includes('patient-portal')) {
         return <NotFoundPage />;
     }
 
