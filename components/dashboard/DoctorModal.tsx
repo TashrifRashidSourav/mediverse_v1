@@ -52,6 +52,7 @@ const DoctorModal: React.FC<DoctorModalProps> = ({ isOpen, onClose, onSave, doct
     phone: '',
     email: '',
     imageUrl: '',
+    password: '',
   });
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -65,6 +66,7 @@ const DoctorModal: React.FC<DoctorModalProps> = ({ isOpen, onClose, onSave, doct
         phone: doctor.phone,
         email: doctor.email,
         imageUrl: doctor.imageUrl || '',
+        password: '', // Don't pre-fill password for security
       });
       setImagePreview(doctor.imageUrl || null);
     } else {
@@ -75,6 +77,7 @@ const DoctorModal: React.FC<DoctorModalProps> = ({ isOpen, onClose, onSave, doct
         phone: '',
         email: '',
         imageUrl: '',
+        password: '',
       });
       setImagePreview(null);
     }
@@ -102,7 +105,12 @@ const DoctorModal: React.FC<DoctorModalProps> = ({ isOpen, onClose, onSave, doct
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    await onSave(formData);
+    // Exclude password if it's empty during an update
+    const dataToSave = { ...formData };
+    if (doctor && !formData.password) {
+      delete dataToSave.password;
+    }
+    await onSave(dataToSave);
     setIsSubmitting(false);
   };
 
@@ -159,9 +167,13 @@ const DoctorModal: React.FC<DoctorModalProps> = ({ isOpen, onClose, onSave, doct
                   <input type="tel" id="phone" name="phone" value={formData.phone} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" />
                 </div>
                 <div>
-                  <label htmlFor="email" className="font-semibold text-slate-700 block mb-1.5">Email Address</label>
-                  <input type="email" id="email" name="email" value={formData.email} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" />
+                  <label htmlFor="email" className="font-semibold text-slate-700 block mb-1.5">Email Address*</label>
+                  <input type="email" id="email" name="email" value={formData.email} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" required />
                 </div>
+              </div>
+               <div>
+                  <label htmlFor="password" className="font-semibold text-slate-700 block mb-1.5">Password*</label>
+                  <input type="password" id="password" name="password" value={formData.password} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" placeholder={doctor ? "Leave blank to keep unchanged" : ""} required={!doctor} />
               </div>
             </div>
           </div>

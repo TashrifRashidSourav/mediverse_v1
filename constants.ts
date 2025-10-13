@@ -10,7 +10,7 @@ export const PLANS: Plan[] = [
       'Basic Website Template',
       'Contact Form',
       'Location Map',
-      '5GB Storage',
+    
       'Email Support',
     ],
     isRecommended: false,
@@ -24,7 +24,7 @@ export const PLANS: Plan[] = [
       'Advanced Website Templates',
       'Online Appointment Booking',
       'Patient Portal (Basic)',
-      '20GB Storage',
+  
       'Priority Email Support',
     ],
     isRecommended: true,
@@ -37,8 +37,8 @@ export const PLANS: Plan[] = [
       'Everything in Premium',
       'Custom Website Design',
       'E-commerce for Pharmacy',
-      'Advanced Patient Portal',
-      'Unlimited Storage',
+  
+     
       '24/7 Phone Support',
     ],
     isRecommended: false,

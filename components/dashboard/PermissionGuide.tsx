@@ -28,7 +28,7 @@ service cloud.firestore {
       allow read: if true;
 
       // Allow hospital admin to create their own profile (signup)
-      allow create: if signedIn() && request.auth.uid == hospitalId;
+      allow create: if isOwner(hospitalId);
 
       // Allow hospital admin to update or delete only their own document
       allow update, delete: if isOwner(hospitalId);
@@ -54,6 +54,13 @@ service cloud.firestore {
         allow read, write, create, delete: if isOwner(hospitalId);
       }
 
+      // --- Prescriptions Subcollection ---
+      match /prescriptions/{docId} {
+        // Only the hospital admin can manage prescriptions for now.
+        // A future update can add rules for authenticated doctors.
+        allow read, write, create, delete: if isOwner(hospitalId);
+      }
+
       // --- Website Settings Subcollection ---
       match /settings/{siteSettings} {
         // Public can read settings (for displaying info on website)
@@ -67,7 +74,7 @@ service cloud.firestore {
     // --- Universal Patients Collection ---
     match /patients/{patientId} {
       // Allow signed-in patient to create their own profile
-      allow create: if signedIn() && request.auth.uid == patientId;
+      allow create: if isOwner(patientId);
 
       // Allow patients to read or update only their own profile
       allow read, update: if isOwner(patientId);

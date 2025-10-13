@@ -61,7 +61,12 @@ const DoctorManagement: React.FC = () => {
         try {
             if (selectedDoctor) {
                 // Update existing doctor
-                await db.collection('users').doc(hospitalId).collection('doctors').doc(selectedDoctor.id).update(doctorData);
+                const updateData: Partial<Doctor> = { ...doctorData };
+                // Only update password if a new one was entered
+                if (!doctorData.password) {
+                    delete updateData.password;
+                }
+                await db.collection('users').doc(hospitalId).collection('doctors').doc(selectedDoctor.id).update(updateData);
             } else {
                 // Add new doctor
                 await db.collection('users').doc(hospitalId).collection('doctors').add(doctorData);
