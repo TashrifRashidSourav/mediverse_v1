@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { MedicalIcon } from '../../components/icons/MedicalIcon';
-import { db, auth, firebase } from '../../firebase';
-import { Patient, PatientStatus } from '../../types';
+import { db, auth } from '../../firebase';
+import { Patient } from '../../types';
 
 const PatientSignUpPage: React.FC = () => {
     const navigate = useNavigate();
@@ -32,25 +32,16 @@ const PatientSignUpPage: React.FC = () => {
             return;
         }
         setIsSubmitting(true);
-        let createdUser: firebase.User | null = null;
         
         try {
-            // A truly unique phone number check requires a separate collection and rules.
-            // For now, we proceed and let Firestore security rules handle other constraints.
-            // In a production app, you'd implement a server-side check or secure batch write.
-
             // 1. Create Firebase Auth user
             const userCredential = await auth.createUserWithEmailAndPassword(formData.email, formData.password);
-            createdUser = userCredential.user;
-            // FIX: Cannot find name 'user'. Changed to 'createdUser' which is the correct variable.
+            const createdUser = userCredential.user;
             if (!createdUser) {
                 throw new Error("Failed to create user account.");
             }
 
-            // 2. Refresh token to ensure rules work correctly
-            await createdUser.getIdToken(true);
-
-            // 3. Create the patient profile in the global /patients collection
+            // 2. Create the patient profile in the global /patients collection
             const newPatientProfile: Omit<Patient, 'id' | 'admittedDate' | 'status'> = {
                 authUid: createdUser.uid,
                 name: formData.name,
@@ -62,19 +53,16 @@ const PatientSignUpPage: React.FC = () => {
                 weight: 0,
             };
 
+            // This write is critical. The previous code tried to clean this up if it failed,
+            // but that caused authentication errors. Removing the cleanup is the direct fix.
             await db.collection('patients').doc(createdUser.uid).set(newPatientProfile);
             
             setSuccess(true);
 
         } catch (err: any) {
-             // Cleanup orphaned auth user if Firestore write fails
-            if (createdUser) {
-                try {
-                    await createdUser.delete();
-                } catch (deleteError) {
-                    console.error("Failed to clean up orphaned user:", deleteError);
-                }
-            }
+             console.error("[Patient Signup Error]", err);
+            // We can't easily clean up the auth user if the DB write fails without causing other errors.
+            // So we just report the error to the user.
             if (err.code === 'auth/email-already-in-use') {
                 setError('An account with this email address already exists.');
             } else {

@@ -1,24 +1,54 @@
-import React from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { type User } from '../../types';
+import { type User, SiteSettings } from '../../types';
 import { MedicalIcon } from '../../components/icons/MedicalIcon';
+import { db } from '../../firebase';
 
 interface TemplateProps {
   hospital: User;
 }
 
 const GeneralTemplate: React.FC<TemplateProps> = ({ hospital }) => {
+  const [settings, setSettings] = useState<Partial<SiteSettings>>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      if (!hospital.uid) return;
+      try {
+        const settingsDoc = await db.collection('users').doc(hospital.uid).collection('settings').doc('site').get();
+        if (settingsDoc.exists) {
+          setSettings(settingsDoc.data() as SiteSettings);
+        }
+      } catch (error) {
+        console.error("Error fetching site settings:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSettings();
+  }, [hospital.uid]);
+
+  if (loading) {
+      return <div className="min-h-screen flex items-center justify-center">Loading Site...</div>
+  }
+
   return (
     <div className="bg-white font-sans">
       {/* Header */}
       <header className="border-b border-slate-200">
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <MedicalIcon className="h-8 w-8 text-teal-600" />
+            {settings.logoUrl ? (
+                <img src={settings.logoUrl} alt={`${hospital.hospitalName} Logo`} className="h-10 max-h-10 object-contain"/>
+            ) : (
+                <MedicalIcon className="h-8 w-8 text-teal-600" />
+            )}
             <span className="text-2xl font-bold text-slate-900">{hospital.hospitalName}</span>
           </div>
           <nav>
-            <Link to="/login" className="font-semibold text-teal-600 hover:text-teal-700">Admin Login</Link>
+            <Link to={`/${hospital.subdomain}/dashboard`} className="font-semibold text-teal-600 hover:text-teal-700">Admin Login</Link>
           </nav>
         </div>
       </header>
@@ -35,29 +65,40 @@ const GeneralTemplate: React.FC<TemplateProps> = ({ hospital }) => {
         <section className="mt-20">
           <div className="max-w-4xl mx-auto bg-slate-50 p-8 rounded-lg">
             <h2 className="text-3xl font-bold text-slate-800 mb-4">About Our Hospital</h2>
-            <p className="text-slate-600 leading-relaxed">
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec odio. Praesent libero. Sed cursus ante dapibus diam. Sed nisi. Nulla quis sem at nibh elementum imperdiet. Duis sagittis ipsum. Praesent mauris. Fusce nec tellus sed augue semper porta. Mauris massa.
+            <p className="text-slate-600 leading-relaxed whitespace-pre-line">
+              {settings.aboutUs || "Please update the 'About Us' section in your dashboard settings. Our hospital is dedicated to providing the highest quality of care to our patients."}
             </p>
           </div>
-        </section>
-
-        {/* Services Section */}
-        <section className="mt-20">
-            <h2 className="text-3xl font-bold text-slate-800 text-center mb-8">Our Services</h2>
-            <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6 text-slate-700">
-                <div className="bg-slate-50 p-6 rounded-lg">Emergency Care</div>
-                <div className="bg-slate-50 p-6 rounded-lg">Cardiology</div>
-                <div className="bg-slate-50 p-6 rounded-lg">Orthopedics</div>
-                <div className="bg-slate-50 p-6 rounded-lg">Pediatrics</div>
-            </div>
         </section>
       </main>
 
       {/* Footer */}
-      <footer className="bg-slate-800 text-slate-300 mt-20">
-        <div className="container mx-auto px-6 py-8 text-center">
-          <p>&copy; {new Date().getFullYear()} {hospital.hospitalName}. All rights reserved.</p>
-          <p className="text-sm text-slate-400 mt-2">Powered by Mediverse</p>
+      <footer id="contact" className="bg-slate-800 text-slate-300 mt-20">
+        <div className="container mx-auto px-6 py-12 text-center">
+            <div className="flex justify-center items-center gap-3 mb-4">
+                {settings.logoUrl ? (
+                    <img src={settings.logoUrl} alt={`${hospital.hospitalName} Logo`} className="h-10 brightness-0 invert opacity-80"/>
+                ) : (
+                    <MedicalIcon className="h-8 w-8 text-white" />
+                )}
+                <span className="text-2xl font-bold text-white">{hospital.hospitalName}</span>
+            </div>
+            <div className="max-w-2xl mx-auto space-y-2 text-slate-400">
+                <p>{settings.address || "Address not set in settings"}</p>
+                <p>
+                    <a href={`tel:${settings.contactPhone}`} className="hover:text-white">
+                        {settings.contactPhone || "Phone not set"}
+                    </a>
+                    <span className="mx-2">|</span>
+                    <a href={`mailto:${settings.contactEmail}`} className="hover:text-white">
+                        {settings.contactEmail || "Email not set"}
+                    </a>
+                </p>
+            </div>
+            <div className="mt-8 border-t border-slate-700 pt-8">
+            <p>&copy; {new Date().getFullYear()} {hospital.hospitalName}. All rights reserved.</p>
+            <p className="text-sm text-slate-500 mt-2">Powered by Mediverse</p>
+            </div>
         </div>
       </footer>
     </div>

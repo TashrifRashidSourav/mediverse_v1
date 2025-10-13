@@ -4,7 +4,7 @@ import { type Plan, type SignUpFormData, PlanTier, type User } from "../types";
 import { PLANS } from "../constants";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
-import { auth, db, firebase } from "../firebase"; // make sure firebase is exported in your firebase.ts
+import { auth, db } from "../firebase";
 
 const SignUpPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -26,7 +26,6 @@ const SignUpPage: React.FC = () => {
   const [submissionSuccess, setSubmissionSuccess] = useState(false);
   const [error, setError] = useState("");
 
-  // ✅ Load selected plan from URL
   useEffect(() => {
     const planTier = searchParams.get("plan") as PlanTier;
     if (planTier && Object.values(PlanTier).includes(planTier)) {
@@ -41,7 +40,6 @@ const SignUpPage: React.FC = () => {
     }
   }, [searchParams, navigate]);
 
-  // ✅ Auto-generate subdomain from hospital name
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -56,7 +54,6 @@ const SignUpPage: React.FC = () => {
     }
   };
 
-  // ✅ Handle form submission safely
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (
@@ -75,40 +72,29 @@ const SignUpPage: React.FC = () => {
 
     setError("");
     setIsSubmitting(true);
-    setSubmissionSuccess(false);
-
-    let createdUser: firebase.User | null = null;
 
     try {
-      // Step 1️⃣ Create user
-      const userCredential = await auth.createUserWithEmailAndPassword(
-        formData.email,
-        formData.password
-      );
-      createdUser = userCredential.user;
-      if (!createdUser) throw new Error("User creation failed unexpectedly.");
-
-      // Step 2️⃣ Refresh token before Firestore access
-      await createdUser.getIdToken(true);
-
-      // Step 3️⃣ Ensure subdomain is unique
+      // Step 1: Ensure subdomain is unique BEFORE creating a user
       const existing = await db
         .collection("users")
         .where("subdomain", "==", formData.subdomain)
         .get();
 
       if (!existing.empty) {
-        // Reauthenticate before deleting to avoid invalid-credential
-        const cred = firebase.auth.EmailAuthProvider.credential(
-          formData.email,
-          formData.password
-        );
-        await createdUser.reauthenticateWithCredential(cred);
-        await createdUser.delete();
         throw new Error("subdomain-exists");
       }
 
-      // Step 4️⃣ Save profile in Firestore
+      // Step 2: Create user if subdomain is available
+      const userCredential = await auth.createUserWithEmailAndPassword(
+        formData.email,
+        formData.password
+      );
+      const createdUser = userCredential.user;
+      if (!createdUser) {
+        throw new Error("User creation failed unexpectedly.");
+      }
+
+      // Step 3: Save profile in Firestore.
       const newUserProfile: User = {
         uid: createdUser.uid,
         email: formData.email,
@@ -122,30 +108,13 @@ const SignUpPage: React.FC = () => {
       setSubmissionSuccess(true);
     } catch (err: any) {
       console.error("[Signup Error]", err);
-
-      // Step 5️⃣ Cleanup orphaned account if Firestore or validation failed
-      if (createdUser && !submissionSuccess && err.message !== "subdomain-exists") {
-        try {
-          const cred = firebase.auth.EmailAuthProvider.credential(
-            formData.email,
-            formData.password
-          );
-          await createdUser.reauthenticateWithCredential(cred);
-          await createdUser.delete();
-        } catch (deleteErr) {
-          console.warn("Cleanup failed:", deleteErr);
-        }
-      }
-
-      // Step 6️⃣ User feedback
+      // Step 4: User feedback
       if (err.message === "subdomain-exists") {
         setError(
           "This website URL (subdomain) is already taken. Please choose another."
         );
       } else if (err.code === "auth/email-already-in-use") {
         setError("An account with this email already exists.");
-      } else if (err.code === "auth/invalid-credential") {
-        setError("Session expired. Please refresh and try again.");
       } else {
         setError("Failed to create account. Please try again.");
       }
@@ -154,6 +123,7 @@ const SignUpPage: React.FC = () => {
     }
   };
 
+
   if (!plan)
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -161,7 +131,6 @@ const SignUpPage: React.FC = () => {
       </div>
     );
 
-  // ✅ UI Rendering
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800 flex flex-col">
       <Header />

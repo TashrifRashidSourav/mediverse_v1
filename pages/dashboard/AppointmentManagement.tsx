@@ -66,10 +66,24 @@ const AppointmentManagement: React.FC = () => {
     const handleSaveAppointment = async (appointmentData: Omit<Appointment, 'id'>) => {
         if (!hospitalId) return;
         try {
+            const patient = patients.find(p => p.id === appointmentData.patientId);
+            const doctor = doctors.find(d => d.id === appointmentData.doctorId);
+
+            if (!patient || !doctor) {
+                console.error("Selected patient or doctor not found");
+                return;
+            }
+
+            const fullAppointmentData = {
+                ...appointmentData,
+                patientName: patient.name,
+                doctorName: doctor.name,
+            };
+
             if (selectedAppointment) {
-                await db.collection('users').doc(hospitalId).collection('appointments').doc(selectedAppointment.id).update(appointmentData);
+                await db.collection('users').doc(hospitalId).collection('appointments').doc(selectedAppointment.id).update(fullAppointmentData);
             } else {
-                await db.collection('users').doc(hospitalId).collection('appointments').add(appointmentData);
+                await db.collection('users').doc(hospitalId).collection('appointments').add(fullAppointmentData);
             }
             fetchData();
             handleCloseModal();
