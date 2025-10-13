@@ -120,8 +120,8 @@ const DoctorManagement: React.FC = () => {
                             <tr>
                                 <th className="p-4 font-semibold text-slate-600">Name</th>
                                 <th className="p-4 font-semibold text-slate-600">Specialization</th>
-                                <th className="p-4 font-semibold text-slate-600">Phone</th>
-                                <th className="p-4 font-semibold text-slate-600">Email</th>
+                                <th className="p-4 font-semibold text-slate-600">Contact</th>
+                                <th className="p-4 font-semibold text-slate-600">Email Address</th>
                                 <th className="p-4 font-semibold text-slate-600">Actions</th>
                             </tr>
                         </thead>
