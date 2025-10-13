@@ -23,7 +23,7 @@ const PricingCard: React.FC<{ plan: Plan; }> = ({ plan }) => {
         </div>
       )}
       <h3 className="text-2xl font-bold text-slate-900">{plan.tier}</h3>
-      <p className="mt-4 text-slate-500">For hospitals looking for a robust online presence.</p>
+      <p className="mt-4 text-slate-500">For hospitals aiming to build a powerful and trusted online presence..</p>
       <div className="mt-6">
         <span className="text-5xl font-extrabold text-slate-900">BDT{plan.price}</span>
         <span className="text-slate-500 ml-1">/ month</span>
@@ -51,7 +51,7 @@ const Pricing: React.FC<PricingProps> = ({ plans }) => {
     <section id="pricing" className="py-20 md:py-28 bg-white">
       <div className="container mx-auto px-6">
         <div className="text-center max-w-3xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-bold text-slate-900">Flexible Pricing for Hospitals of All Sizes</h2>
+          <h2 className="text-3xl md:text-4xl font-bold text-slate-900">Scalable and Flexible Pricing Solutions for Hospitals of All Capacities</h2>
           <p className="mt-4 text-lg text-slate-600">
             Pick a plan that suits your hospital’s needs and budget. Start now and revolutionize your digital journey.
           </p>
