@@ -5,7 +5,7 @@ import { XIcon } from '../icons/XIcon';
 interface AppointmentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (appointmentData: Omit<Appointment, 'id'>) => void;
+  onSave: (appointmentData: Omit<Appointment, 'id' | 'patientName' | 'doctorName'>) => void;
   appointment: Appointment | null;
   doctors: Doctor[];
   patients: Patient[];
@@ -13,8 +13,8 @@ interface AppointmentModalProps {
 
 const AppointmentModal: React.FC<AppointmentModalProps> = ({ isOpen, onClose, onSave, appointment, doctors, patients }) => {
   const [formData, setFormData] = useState({
-    patientName: '',
-    doctorName: '',
+    patientId: '',
+    doctorId: '',
     date: new Date().toISOString().split('T')[0],
     time: '09:00',
     status: AppointmentStatus.Scheduled,
@@ -24,8 +24,8 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({ isOpen, onClose, on
   useEffect(() => {
     if (appointment) {
       setFormData({
-        patientName: appointment.patientName,
-        doctorName: appointment.doctorName,
+        patientId: appointment.patientId,
+        doctorId: appointment.doctorId,
         date: new Date(appointment.date).toISOString().split('T')[0],
         time: appointment.time,
         status: appointment.status,
@@ -33,8 +33,8 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({ isOpen, onClose, on
     } else {
       // Reset form
       setFormData({
-        patientName: patients.length > 0 ? patients[0].name : '',
-        doctorName: doctors.length > 0 ? doctors[0].name : '',
+        patientId: patients.length > 0 ? patients[0].id : '',
+        doctorId: doctors.length > 0 ? doctors[0].id : '',
         date: new Date().toISOString().split('T')[0],
         time: '09:00',
         status: AppointmentStatus.Scheduled,
@@ -73,16 +73,16 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({ isOpen, onClose, on
 
             <div className="mt-6 space-y-5">
               <div>
-                <label htmlFor="patientName" className="font-semibold text-slate-700 block mb-1.5">Patient*</label>
-                <select id="patientName" name="patientName" value={formData.patientName} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" required>
-                  {patients.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                <label htmlFor="patientId" className="font-semibold text-slate-700 block mb-1.5">Patient*</label>
+                <select id="patientId" name="patientId" value={formData.patientId} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" required>
+                  {patients.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
               </div>
 
               <div>
-                <label htmlFor="doctorName" className="font-semibold text-slate-700 block mb-1.5">Doctor*</label>
-                <select id="doctorName" name="doctorName" value={formData.doctorName} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" required>
-                  {doctors.map(d => <option key={d.id} value={d.name}>{d.name} ({d.specialization})</option>)}
+                <label htmlFor="doctorId" className="font-semibold text-slate-700 block mb-1.5">Doctor*</label>
+                <select id="doctorId" name="doctorId" value={formData.doctorId} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" required>
+                  {doctors.map(d => <option key={d.id} value={d.id}>{d.name} ({d.specialization})</option>)}
                 </select>
               </div>
 
@@ -99,7 +99,6 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({ isOpen, onClose, on
               
               <div>
                 <label htmlFor="status" className="font-semibold text-slate-700 block mb-1.5">Status*</label>
-                {/* FIX: Use String(s) for the key to fix TypeScript error where s is inferred as 'unknown'. */}
                 <select id="status" name="status" value={formData.status} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" required>
                   {Object.values(AppointmentStatus).map(s => <option key={String(s)} value={s}>{s}</option>)}
                 </select>

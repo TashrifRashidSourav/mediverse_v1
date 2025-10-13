@@ -42,10 +42,25 @@ const imageResizer = (file: File, maxWidth: number, maxHeight: number, quality: 
     });
 };
 
+const PlanBadge: React.FC<{ plan: PlanTier }> = ({ plan }) => {
+    const planStyles = {
+        [PlanTier.General]: 'bg-slate-100 text-slate-700',
+        [PlanTier.Premium]: 'bg-blue-100 text-blue-700',
+        [PlanTier.Golden]: 'bg-amber-100 text-amber-700',
+    };
+    return (
+        <span className={`ml-2 text-xs font-semibold px-2.5 py-0.5 rounded-full ${planStyles[plan]}`}>
+            {plan} Plan
+        </span>
+    );
+}
 
 const WebsiteSettings: React.FC = () => {
     const [settings, setSettings] = useState<SiteSettings>({
         themeColor: '#0D9488',
+        buttonColor: '#0D9488',
+        textColor: '#334155',
+        footerColor: '#1e293b',
         logoUrl: '',
         heroImageUrl: '',
         aboutUs: '',
@@ -62,7 +77,7 @@ const WebsiteSettings: React.FC = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [hospitalId, setHospitalId] = useState<string | null>(null);
     const [subdomain, setSubdomain] = useState<string | null>(null);
-    const [userPlan, setUserPlan] = useState<PlanTier | null>(null);
+    const [userPlan, setUserPlan] = useState<PlanTier>(PlanTier.General);
     const [isLoading, setIsLoading] = useState(true);
     const [permissionError, setPermissionError] = useState(false);
 
@@ -84,12 +99,12 @@ const WebsiteSettings: React.FC = () => {
         try {
             const userDoc = await db.collection('users').doc(hospitalId).get();
             if (userDoc.exists) {
-                setUserPlan(userDoc.data()?.plan);
+                setUserPlan(userDoc.data()?.plan || PlanTier.General);
             }
             const settingsDoc = await db.collection('users').doc(hospitalId).collection('settings').doc('site').get();
             if (settingsDoc.exists) {
                 const data = settingsDoc.data() as SiteSettings;
-                setSettings(data);
+                setSettings(prev => ({...prev, ...data}));
                 if (data.logoUrl) setLogoPreview(data.logoUrl);
                 if (data.heroImageUrl) setHeroImagePreview(data.heroImageUrl);
             }
@@ -126,8 +141,6 @@ const WebsiteSettings: React.FC = () => {
 
     const handleListChange = <T extends {id: string}>(listName: 'services' | 'testimonials' | 'socialLinks', index: number, field: keyof T, value: string) => {
         setSettings(prev => {
-            // FIX: Cast to 'unknown' to fix TypeScript error. This is safe because the
-            // calling context ensures T matches the array type for the given listName.
             const newList = [...(prev[listName] as unknown as T[])];
             newList[index] = { ...newList[index], [field]: value as any };
             return { ...prev, [listName]: newList };
@@ -166,17 +179,14 @@ const WebsiteSettings: React.FC = () => {
 
     if (isLoading) return <div>Loading settings...</div>;
     if (permissionError) return <PermissionGuide firebaseConfig={(firebase.app() as any).options} />;
-    if (userPlan !== PlanTier.Golden) return (
-        <div className="bg-white rounded-xl shadow-md p-8 text-center">
-            <h1 className="text-3xl font-bold text-slate-900 mb-4">Website Customization</h1>
-            <p className="text-slate-600 max-w-md mx-auto">This feature is exclusively for the <strong className="text-amber-600">Golden Plan</strong>.</p>
-        </div>
-    );
 
     return (
         <div>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-                <h1 className="text-3xl font-bold text-slate-900">Website Settings</h1>
+                <div>
+                    <h1 className="text-3xl font-bold text-slate-900">Website Settings</h1>
+                    <p className="text-slate-500">Your current plan is: <strong className="text-slate-800">{userPlan}</strong></p>
+                </div>
                 <div className="flex items-center gap-3">
                     <a href={`/#/${subdomain}`} target="_blank" rel="noopener noreferrer" className="bg-white border border-slate-300 text-slate-800 font-bold py-2 px-4 rounded-lg hover:bg-slate-100 transition-colors flex items-center gap-2">
                         <EyeIcon className="h-5 w-5" />
@@ -189,32 +199,59 @@ const WebsiteSettings: React.FC = () => {
             </div>
 
             <div className="space-y-8">
+                {/* Branding - Golden Only */}
+                {userPlan === PlanTier.Golden && (
+                    <div className="bg-white p-6 rounded-xl shadow-md">
+                        <h2 className="text-xl font-bold text-slate-800 mb-4">Branding &amp; Theme <PlanBadge plan={PlanTier.Golden} /></h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                             <div className="grid grid-cols-2 gap-4">
+                                 <div>
+                                    <label className="font-semibold text-slate-700 block mb-1.5">Theme Color</label>
+                                    <input type="color" name="themeColor" value={settings.themeColor} onChange={handleInputChange} className="w-24 h-10 p-1 border border-slate-300 rounded-lg" />
+                                 </div>
+                                 <div>
+                                    <label className="font-semibold text-slate-700 block mb-1.5">Button Color</label>
+                                    <input type="color" name="buttonColor" value={settings.buttonColor} onChange={handleInputChange} className="w-24 h-10 p-1 border border-slate-300 rounded-lg" />
+                                 </div>
+                                 <div>
+                                    <label className="font-semibold text-slate-700 block mb-1.5">Text Color</label>
+                                    <input type="color" name="textColor" value={settings.textColor} onChange={handleInputChange} className="w-24 h-10 p-1 border border-slate-300 rounded-lg" />
+                                 </div>
+                                  <div>
+                                    <label className="font-semibold text-slate-700 block mb-1.5">Footer Color</label>
+                                    <input type="color" name="footerColor" value={settings.footerColor} onChange={handleInputChange} className="w-24 h-10 p-1 border border-slate-300 rounded-lg" />
+                                  </div>
+                             </div>
+                            <div>
+                                 <label className="font-semibold text-slate-700 block mb-1.5">Hospital Logo</label>
+                                 {logoPreview && <img src={logoPreview} alt="Logo preview" className="h-12 mb-2 bg-slate-100 p-1 rounded" />}
+                                 <input type="file" onChange={(e) => handleImageChange(e, 'logo')} accept="image/png, image/jpeg" className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary hover:file:bg-primary-100"/>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                
+                {/* Homepage Content */}
                 <div className="bg-white p-6 rounded-xl shadow-md">
-                    <h2 className="text-xl font-bold text-slate-800 mb-4">Branding & Hero</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                         <div>
-                            <label className="font-semibold text-slate-700 block mb-1.5">Theme Color</label>
-                            <input type="color" name="themeColor" value={settings.themeColor} onChange={handleInputChange} className="w-24 h-10 p-1 border border-slate-300 rounded-lg" />
-                        </div>
+                    <h2 className="text-xl font-bold text-slate-800 mb-4">Homepage Content</h2>
+                    <div className="space-y-6">
+                        {(userPlan === PlanTier.Premium || userPlan === PlanTier.Golden) && (
+                            <div>
+                                 <label className="font-semibold text-slate-700 block mb-1.5">Landing Page Image <PlanBadge plan={PlanTier.Premium} /></label>
+                                 {heroImagePreview && <img src={heroImagePreview} alt="Hero preview" className="h-32 w-full object-cover rounded-lg mb-2 bg-slate-100" />}
+                                 <input type="file" onChange={(e) => handleImageChange(e, 'hero')} accept="image/png, image/jpeg" className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary hover:file:bg-primary-100"/>
+                            </div>
+                        )}
                         <div>
-                             <label className="font-semibold text-slate-700 block mb-1.5">Hospital Logo</label>
-                             {logoPreview && <img src={logoPreview} alt="Logo preview" className="h-12 mb-2 bg-slate-100 p-1 rounded" />}
-                             <input type="file" onChange={(e) => handleImageChange(e, 'logo')} accept="image/png, image/jpeg" className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary hover:file:bg-primary-100"/>
-                        </div>
-                        <div className="md:col-span-2">
-                             <label className="font-semibold text-slate-700 block mb-1.5">Landing Page Image</label>
-                             {heroImagePreview && <img src={heroImagePreview} alt="Hero preview" className="h-32 w-full object-cover rounded-lg mb-2 bg-slate-100" />}
-                             <input type="file" onChange={(e) => handleImageChange(e, 'hero')} accept="image/png, image/jpeg" className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary hover:file:bg-primary-100"/>
-                        </div>
-                        <div className="md:col-span-2">
                              <label htmlFor="aboutUs" className="font-semibold text-slate-700 block mb-1.5">About Us Section</label>
-                             <textarea id="aboutUs" name="aboutUs" value={settings.aboutUs} onChange={handleInputChange} rows={5} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" />
+                             <textarea id="aboutUs" name="aboutUs" value={settings.aboutUs} onChange={handleInputChange} rows={5} placeholder="Write a brief introduction to your hospital..." className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" />
                         </div>
                     </div>
                 </div>
-                
-                <div className="bg-white p-6 rounded-xl shadow-md">
-                     <h2 className="text-xl font-bold text-slate-800 mb-4">Contact & Footer</h2>
+
+                {/* Contact Info */}
+                 <div className="bg-white p-6 rounded-xl shadow-md">
+                     <h2 className="text-xl font-bold text-slate-800 mb-4">Contact Information</h2>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <div>
                             <label htmlFor="contactPhone" className="font-semibold text-slate-700 block mb-1.5">Phone Number</label>
@@ -229,57 +266,66 @@ const WebsiteSettings: React.FC = () => {
                              <input type="text" id="address" name="address" value={settings.address} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg"/>
                           </div>
                      </div>
-                      <div className="flex justify-between items-center mt-6 pt-4 border-t border-slate-200 mb-4">
-                          <h3 className="text-lg font-bold text-slate-800">Social Media Links</h3>
-                          <button onClick={() => addListItem('socialLinks')} className="flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary-700"><PlusIcon className="h-4 w-4"/> Add Link</button>
-                      </div>
-                      <div className="space-y-4">
-                        {settings.socialLinks?.map((link, index) => (
-                          <div key={link.id} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center bg-slate-50 p-4 rounded-lg">
-                            <select value={link.platform} onChange={e => handleListChange<SocialLink>('socialLinks', index, 'platform', e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-md">
-                                <option>Facebook</option>
-                                <option>Twitter</option>
-                                <option>Instagram</option>
-                                <option>LinkedIn</option>
-                            </select>
-                            <input type="url" value={link.url} onChange={e => handleListChange<SocialLink>('socialLinks', index, 'url', e.target.value)} placeholder="Full URL (e.g., https://...)" className="w-full md:col-span-2 px-3 py-2 border border-slate-300 rounded-md"/>
-                            <button onClick={() => removeListItem('socialLinks', index)} className="text-red-500 hover:text-red-700 justify-self-start md:col-start-4"><TrashIcon className="h-5 w-5"/></button>
+                      {userPlan === PlanTier.Golden && (
+                          <div className="mt-6 pt-4 border-t border-slate-200">
+                              <div className="flex justify-between items-center mb-4">
+                                  <h3 className="text-lg font-bold text-slate-800">Social Media Links <PlanBadge plan={PlanTier.Golden} /></h3>
+                                  <button onClick={() => addListItem('socialLinks')} className="flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary-700"><PlusIcon className="h-4 w-4"/> Add Link</button>
+                              </div>
+                              <div className="space-y-4">
+                                {settings.socialLinks?.map((link, index) => (
+                                  <div key={link.id} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center bg-slate-50 p-4 rounded-lg">
+                                    <select value={link.platform} onChange={e => handleListChange<SocialLink>('socialLinks', index, 'platform', e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-md">
+                                        <option>Facebook</option>
+                                        <option>Twitter</option>
+                                        <option>Instagram</option>
+                                        <option>LinkedIn</option>
+                                    </select>
+                                    <input type="url" value={link.url} onChange={e => handleListChange<SocialLink>('socialLinks', index, 'url', e.target.value)} placeholder="Full URL (e.g., https://...)" className="w-full md:col-span-2 px-3 py-2 border border-slate-300 rounded-md"/>
+                                    <button onClick={() => removeListItem('socialLinks', index)} className="text-red-500 hover:text-red-700 justify-self-start md:col-start-4"><TrashIcon className="h-5 w-5"/></button>
+                                  </div>
+                                ))}
+                              </div>
                           </div>
-                        ))}
-                      </div>
+                      )}
                 </div>
 
-                <div className="bg-white p-6 rounded-xl shadow-md">
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-bold text-slate-800">Services / Departments</h2>
-                        <button onClick={() => addListItem('services')} className="flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary-700"><PlusIcon className="h-4 w-4"/> Add Service</button>
-                    </div>
-                     <div className="space-y-4">
-                        {settings.services?.map((service, index) => (
-                            <div key={service.id} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end bg-slate-50 p-4 rounded-lg">
-                                <input type="text" value={service.name} onChange={e => handleListChange<ServiceItem>('services', index, 'name', e.target.value)} placeholder="Service Name (e.g., Cardiology)" className="w-full px-3 py-2 border border-slate-300 rounded-md"/>
-                                <input type="text" value={service.description} onChange={e => handleListChange<ServiceItem>('services', index, 'description', e.target.value)} placeholder="Short Description" className="w-full px-3 py-2 border border-slate-300 rounded-md"/>
-                                <button onClick={() => removeListItem('services', index)} className="text-red-500 hover:text-red-700 justify-self-start md:justify-self-end"><TrashIcon className="h-5 w-5"/></button>
+                {/* Advanced Content - Golden Only */}
+                {userPlan === PlanTier.Golden && (
+                    <>
+                        <div className="bg-white p-6 rounded-xl shadow-md">
+                            <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-xl font-bold text-slate-800">Services / Departments <PlanBadge plan={PlanTier.Golden} /></h2>
+                                <button onClick={() => addListItem('services')} className="flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary-700"><PlusIcon className="h-4 w-4"/> Add Service</button>
                             </div>
-                        ))}
-                    </div>
-                </div>
-                
-                 <div className="bg-white p-6 rounded-xl shadow-md">
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-bold text-slate-800">Patient Testimonials</h2>
-                        <button onClick={() => addListItem('testimonials')} className="flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary-700"><PlusIcon className="h-4 w-4"/> Add Testimonial</button>
-                    </div>
-                     <div className="space-y-4">
-                        {settings.testimonials?.map((testimonial, index) => (
-                            <div key={testimonial.id} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end bg-slate-50 p-4 rounded-lg">
-                                 <input type="text" value={testimonial.patientName} onChange={e => handleListChange<Testimonial>('testimonials', index, 'patientName', e.target.value)} placeholder="Patient Name" className="w-full px-3 py-2 border border-slate-300 rounded-md"/>
-                                 <textarea value={testimonial.quote} onChange={e => handleListChange<Testimonial>('testimonials', index, 'quote', e.target.value)} placeholder="Testimonial Quote" rows={2} className="md:col-span-2 w-full px-3 py-2 border border-slate-300 rounded-md"/>
-                                 <button onClick={() => removeListItem('testimonials', index)} className="text-red-500 hover:text-red-700 justify-self-start md:justify-self-end md:col-start-4"><TrashIcon className="h-5 w-5"/></button>
+                             <div className="space-y-4">
+                                {settings.services?.map((service, index) => (
+                                    <div key={service.id} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end bg-slate-50 p-4 rounded-lg">
+                                        <input type="text" value={service.name} onChange={e => handleListChange<ServiceItem>('services', index, 'name', e.target.value)} placeholder="Service Name (e.g., Cardiology)" className="w-full px-3 py-2 border border-slate-300 rounded-md"/>
+                                        <input type="text" value={service.description} onChange={e => handleListChange<ServiceItem>('services', index, 'description', e.target.value)} placeholder="Short Description" className="w-full px-3 py-2 border border-slate-300 rounded-md"/>
+                                        <button onClick={() => removeListItem('services', index)} className="text-red-500 hover:text-red-700 justify-self-start md:justify-self-end"><TrashIcon className="h-5 w-5"/></button>
+                                    </div>
+                                ))}
                             </div>
-                        ))}
-                    </div>
-                </div>
+                        </div>
+                        
+                         <div className="bg-white p-6 rounded-xl shadow-md">
+                            <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-xl font-bold text-slate-800">Patient Testimonials <PlanBadge plan={PlanTier.Golden} /></h2>
+                                <button onClick={() => addListItem('testimonials')} className="flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary-700"><PlusIcon className="h-4 w-4"/> Add Testimonial</button>
+                            </div>
+                             <div className="space-y-4">
+                                {settings.testimonials?.map((testimonial, index) => (
+                                    <div key={testimonial.id} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end bg-slate-50 p-4 rounded-lg">
+                                         <input type="text" value={testimonial.patientName} onChange={e => handleListChange<Testimonial>('testimonials', index, 'patientName', e.target.value)} placeholder="Patient Name" className="w-full px-3 py-2 border border-slate-300 rounded-md"/>
+                                         <textarea value={testimonial.quote} onChange={e => handleListChange<Testimonial>('testimonials', index, 'quote', e.target.value)} placeholder="Testimonial Quote" rows={2} className="md:col-span-2 w-full px-3 py-2 border border-slate-300 rounded-md"/>
+                                         <button onClick={() => removeListItem('testimonials', index)} className="text-red-500 hover:text-red-700 justify-self-start md:justify-self-end md:col-start-4"><TrashIcon className="h-5 w-5"/></button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </>
+                )}
             </div>
         </div>
     );

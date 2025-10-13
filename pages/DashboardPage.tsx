@@ -3,24 +3,40 @@ import { Outlet, useParams, useNavigate } from 'react-router-dom';
 import Sidebar from '../components/dashboard/Sidebar';
 import { MenuIcon } from '../components/icons/MenuIcon';
 import { ChevronDownIcon } from '../components/icons/ChevronDownIcon';
-import { auth } from '../firebase';
-import { type User } from '../types';
+import { auth, db } from '../firebase';
+import { type User, type SiteSettings } from '../types';
 
 const DashboardPage: React.FC = () => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [userProfile, setUserProfile] = useState<Partial<User>>({});
+  const [siteSettings, setSiteSettings] = useState<Partial<SiteSettings>>({});
   const { subdomain } = useParams<{ subdomain: string }>();
   const navigate = useNavigate();
 
   useEffect(() => {
     const storedProfile = localStorage.getItem('userProfile');
-    if (storedProfile) {
+    const currentUser = auth.currentUser;
+    if (storedProfile && currentUser) {
       const parsedProfile = JSON.parse(storedProfile);
       setUserProfile(parsedProfile);
       if(subdomain !== parsedProfile.subdomain) {
           auth.signOut();
           navigate('/login');
+          return;
       }
+      
+      const fetchSettings = async () => {
+          try {
+            const settingsDoc = await db.collection('users').doc(currentUser.uid).collection('settings').doc('site').get();
+            if (settingsDoc.exists) {
+                setSiteSettings(settingsDoc.data() as SiteSettings);
+            }
+          } catch (error) {
+              console.error("Error fetching dashboard settings:", error);
+          }
+      };
+      fetchSettings();
+
     } else {
         auth.signOut();
         navigate('/login');
@@ -35,7 +51,13 @@ const DashboardPage: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-slate-100 font-sans">
-      <Sidebar isOpen={isMobileSidebarOpen} setIsOpen={setIsMobileSidebarOpen} hospitalName={userProfile.hospitalName || 'Dashboard'} subdomain={subdomain!} />
+      <Sidebar 
+        isOpen={isMobileSidebarOpen} 
+        setIsOpen={setIsMobileSidebarOpen} 
+        hospitalName={userProfile.hospitalName || 'Dashboard'} 
+        subdomain={subdomain!}
+        logoUrl={siteSettings.logoUrl}
+       />
 
       <div className="flex-1 flex flex-col transition-all duration-300 md:ml-64">
         {/* Top Header */}
