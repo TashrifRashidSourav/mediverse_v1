@@ -4,7 +4,7 @@ import { type Plan, PlanTier } from './types';
 export const PLANS: Plan[] = [
   {
     tier: PlanTier.General,
-    price: 49,
+    price: 1200,
     features: [
       'Custom Subdomain',
       'Basic Website Template',
@@ -18,7 +18,7 @@ export const PLANS: Plan[] = [
   },
   {
     tier: PlanTier.Premium,
-    price: 99,
+    price: 2500,
     features: [
       'Everything in General',
       'Advanced Website Templates',
@@ -32,7 +32,7 @@ export const PLANS: Plan[] = [
   },
   {
     tier: PlanTier.Golden,
-    price: 199,
+    price: 4000,
     features: [
       'Everything in Premium',
       'Custom Website Design',

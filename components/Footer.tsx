@@ -11,7 +11,7 @@ const Footer: React.FC = () => {
               <MedicalIcon className="h-8 w-8 text-primary" />
               <span className="text-2xl font-bold text-white">Mediverse</span>
             </div>
-            <p className="max-w-md">Empowering hospitals with the digital tools they need to provide better care and connect with patients.</p>
+            <p className="max-w-md">Supporting hospitals with simple digital tools to better care and connect with patients.</p>
           </div>
           <div>
             <h4 className="font-semibold text-white tracking-wider uppercase">Product</h4>
