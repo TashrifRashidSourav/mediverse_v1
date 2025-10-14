@@ -48,7 +48,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, hospitalName, subd
         <div className="flex items-center justify-between px-6 py-5 border-b border-slate-700">
           <Link to={baseDashboardPath} className="flex items-center gap-2">
              {logoUrl ? (
-                <img src={logoUrl} alt={`${hospitalName} Logo`} className="h-8 max-h-8 object-contain brightness-0 invert"/>
+                <div className="h-8 w-8 flex items-center justify-center bg-white rounded-md p-1">
+                    <img src={logoUrl} alt={`${hospitalName} Logo`} className="h-full w-full object-contain"/>
+                </div>
             ) : (
                 <MedicalIcon className="h-7 w-7 text-primary" />
             )}

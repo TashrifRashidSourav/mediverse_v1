@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Doctor } from '../../types';
+import { Doctor, Availability } from '../../types';
 import { XIcon } from '../icons/XIcon';
 import { UserCircleIcon } from '../icons/UserCircleIcon';
+import { PlusIcon } from '../icons/PlusIcon';
+import { TrashIcon } from '../icons/TrashIcon';
+
+const generateId = () => '_' + Math.random().toString(36).substr(2, 9);
+const daysOfWeek: Availability['day'][] = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
 interface DoctorModalProps {
   isOpen: boolean;
@@ -45,7 +50,7 @@ const imageResizer = (file: File, maxWidth: number, maxHeight: number, quality: 
 };
 
 const DoctorModal: React.FC<DoctorModalProps> = ({ isOpen, onClose, onSave, doctor }) => {
-  const [formData, setFormData] = useState<Omit<Doctor, 'id'>>({
+  const [formData, setFormData] = useState<Omit<Doctor, 'id' | 'availability'>>({
     name: '',
     specialization: '',
     qualifications: '',
@@ -53,7 +58,10 @@ const DoctorModal: React.FC<DoctorModalProps> = ({ isOpen, onClose, onSave, doct
     email: '',
     imageUrl: '',
     password: '',
+    experience: '',
+    fees: 0,
   });
+  const [availability, setAvailability] = useState<Availability[]>([]);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -67,7 +75,10 @@ const DoctorModal: React.FC<DoctorModalProps> = ({ isOpen, onClose, onSave, doct
         email: doctor.email,
         imageUrl: doctor.imageUrl || '',
         password: '', // Don't pre-fill password for security
+        experience: doctor.experience || '',
+        fees: doctor.fees || 0,
       });
+      setAvailability(doctor.availability?.map(a => ({...a, id: a.id || generateId()})) || []);
       setImagePreview(doctor.imageUrl || null);
     } else {
       setFormData({
@@ -78,14 +89,17 @@ const DoctorModal: React.FC<DoctorModalProps> = ({ isOpen, onClose, onSave, doct
         email: '',
         imageUrl: '',
         password: '',
+        experience: '',
+        fees: 0,
       });
+      setAvailability([]);
       setImagePreview(null);
     }
   }, [doctor, isOpen]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: name === 'fees' ? Number(value) : value }));
   };
   
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -102,11 +116,22 @@ const DoctorModal: React.FC<DoctorModalProps> = ({ isOpen, onClose, onSave, doct
       setFormData(prev => ({...prev, imageUrl: ''}));
   };
 
+  const handleAvailabilityChange = (id: string, field: keyof Availability, value: string) => {
+    setAvailability(prev => prev.map(item => item.id === id ? { ...item, [field]: value } : item));
+  };
+  
+  const addAvailabilitySlot = () => {
+    setAvailability(prev => [...prev, { id: generateId(), day: 'Monday', startTime: '09:00', endTime: '17:00' }]);
+  };
+
+  const removeAvailabilitySlot = (id: string) => {
+    setAvailability(prev => prev.filter(item => item.id !== id));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    // Exclude password if it's empty during an update
-    const dataToSave = { ...formData };
+    const dataToSave = { ...formData, availability };
     if (doctor && !formData.password) {
       delete dataToSave.password;
     }
@@ -119,11 +144,11 @@ const DoctorModal: React.FC<DoctorModalProps> = ({ isOpen, onClose, onSave, doct
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
       <div 
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl transform transition-all"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl transform transition-all"
         onClick={(e) => e.stopPropagation()}
       >
         <form onSubmit={handleSubmit}>
-          <div className="p-8">
+          <div className="p-8 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-start">
               <h2 className="text-2xl font-bold text-slate-900">{doctor ? 'Edit Doctor Profile' : 'Add New Doctor'}</h2>
               <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600">
@@ -162,12 +187,22 @@ const DoctorModal: React.FC<DoctorModalProps> = ({ isOpen, onClose, onSave, doct
                   <input type="text" id="qualifications" name="qualifications" value={formData.qualifications} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                 <div>
+                    <label htmlFor="experience" className="font-semibold text-slate-700 block mb-1.5">Experience (e.g., 5 years)</label>
+                    <input type="text" id="experience" name="experience" value={formData.experience} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" />
+                 </div>
+                 <div>
+                    <label htmlFor="fees" className="font-semibold text-slate-700 block mb-1.5">Consultation Fee</label>
+                    <input type="number" id="fees" name="fees" min="0" value={formData.fees} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" />
+                 </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <label htmlFor="phone" className="font-semibold text-slate-700 block mb-1.5">Phone Number</label>
                   <input type="tel" id="phone" name="phone" value={formData.phone} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" />
                 </div>
                 <div>
-                  <label htmlFor="email" className="font-semibold text-slate-700 block mb-1.5">Email Address*</label>
+                  <label htmlFor="email" className="font-semibold text-slate-700 block mb-1.5">Email Address* (for login)</label>
                   <input type="email" id="email" name="email" value={formData.email} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" required />
                 </div>
               </div>
@@ -175,6 +210,27 @@ const DoctorModal: React.FC<DoctorModalProps> = ({ isOpen, onClose, onSave, doct
                   <label htmlFor="password" className="font-semibold text-slate-700 block mb-1.5">Password*</label>
                   <input type="password" id="password" name="password" value={formData.password} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" placeholder={doctor ? "Leave blank to keep unchanged" : ""} required={!doctor} />
               </div>
+              
+              <div className="pt-4 border-t">
+                 <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-semibold text-slate-700">Weekly Availability</h3>
+                    <button type="button" onClick={addAvailabilitySlot} className="flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary-700"><PlusIcon className="h-4 w-4"/> Add Slot</button>
+                 </div>
+                 <div className="space-y-2">
+                    {availability.map(item => (
+                       <div key={item.id} className="grid grid-cols-1 sm:grid-cols-9 gap-2 items-center">
+                          <select value={item.day} onChange={(e) => handleAvailabilityChange(item.id, 'day', e.target.value)} className="sm:col-span-3 w-full px-3 py-2 border border-slate-300 rounded-lg">
+                             {daysOfWeek.map(day => <option key={day} value={day}>{day}</option>)}
+                          </select>
+                          <input type="time" value={item.startTime} onChange={(e) => handleAvailabilityChange(item.id, 'startTime', e.target.value)} className="sm:col-span-2 w-full px-3 py-2 border border-slate-300 rounded-lg" />
+                          <span className="text-center hidden sm:block">-</span>
+                          <input type="time" value={item.endTime} onChange={(e) => handleAvailabilityChange(item.id, 'endTime', e.target.value)} className="sm:col-span-2 w-full px-3 py-2 border border-slate-300 rounded-lg" />
+                          <button type="button" onClick={() => removeAvailabilitySlot(item.id)} className="sm:col-span-1 text-red-500 hover:text-red-700 flex justify-center"><TrashIcon className="h-5 w-5"/></button>
+                       </div>
+                    ))}
+                 </div>
+              </div>
+
             </div>
           </div>
 

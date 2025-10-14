@@ -25,7 +25,7 @@ const PricingCard: React.FC<{ plan: Plan; }> = ({ plan }) => {
       <h3 className="text-2xl font-bold text-slate-900">{plan.tier}</h3>
       <p className="mt-4 text-slate-500">For hospitals looking for a robust online presence.</p>
       <div className="mt-6">
-        <span className="text-5xl font-extrabold text-slate-900">BDT{plan.price}</span>
+        <span className="text-5xl font-extrabold text-slate-900">${plan.price}</span>
         <span className="text-slate-500 ml-1">/ month</span>
       </div>
       <ul className="mt-8 space-y-4 text-slate-600 flex-grow">

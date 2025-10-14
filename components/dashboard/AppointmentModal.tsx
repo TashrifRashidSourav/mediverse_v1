@@ -5,7 +5,9 @@ import { XIcon } from '../icons/XIcon';
 interface AppointmentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (appointmentData: Omit<Appointment, 'id' | 'patientName' | 'doctorName'>) => void;
+  // FIX: The onSave prop should only expect the data this modal can provide.
+  // The parent component is responsible for adding hospital-specific details.
+  onSave: (appointmentData: Omit<Appointment, 'id' | 'patientName' | 'doctorName' | 'hospitalId' | 'hospitalName'>) => void;
   appointment: Appointment | null;
   doctors: Doctor[];
   patients: Patient[];
@@ -24,7 +26,7 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({ isOpen, onClose, on
   useEffect(() => {
     if (appointment) {
       setFormData({
-        patientId: appointment.patientId,
+        patientId: appointment.patientId || '',
         doctorId: appointment.doctorId,
         date: new Date(appointment.date).toISOString().split('T')[0],
         time: appointment.time,
@@ -50,7 +52,30 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({ isOpen, onClose, on
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    await onSave(formData);
+    
+    // FIX: Construct the full object this modal is responsible for, including patientDetails.
+    const selectedPatient = patients.find(p => p.id === formData.patientId);
+    if (!selectedPatient) {
+        console.error("Selected patient not found!");
+        setIsSubmitting(false);
+        return;
+    }
+
+    const dataToSave: Omit<Appointment, 'id' | 'patientName' | 'doctorName' | 'hospitalId' | 'hospitalName'> = {
+        patientId: formData.patientId,
+        doctorId: formData.doctorId,
+        date: formData.date,
+        time: formData.time,
+        status: formData.status,
+        authUid: selectedPatient.authUid,
+        patientDetails: {
+            phone: selectedPatient.phone,
+            gender: selectedPatient.gender,
+            age: selectedPatient.age,
+        },
+    };
+    
+    await onSave(dataToSave);
     setIsSubmitting(false);
   };
 

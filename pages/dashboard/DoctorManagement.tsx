@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { db, auth, firebase } from '../../firebase';
+import { db, auth } from '../../firebase';
 import { Doctor } from '../../types';
 import DoctorModal from '../../components/dashboard/DoctorModal';
 import { PlusIcon } from '../../components/icons/PlusIcon';
@@ -7,6 +7,7 @@ import { EditIcon } from '../../components/icons/EditIcon';
 import { TrashIcon } from '../../components/icons/TrashIcon';
 import { UserCircleIcon } from '../../components/icons/UserCircleIcon';
 import PermissionGuide from '../../components/dashboard/PermissionGuide';
+import { firebaseConfig } from '../../firebaseConfig';
 
 const DoctorManagement: React.FC = () => {
     const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -97,7 +98,7 @@ const DoctorManagement: React.FC = () => {
     };
     
     if (permissionError) {
-        return <PermissionGuide firebaseConfig={(firebase.app() as any).options} />;
+        return <PermissionGuide firebaseConfig={firebaseConfig} />;
     }
 
     return (
