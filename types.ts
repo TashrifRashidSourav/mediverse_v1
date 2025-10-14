@@ -30,6 +30,14 @@ export interface User {
   plan: PlanTier;
 }
 
+export interface Availability {
+    id: string;
+    day: 'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
+    startTime: string; // HH:mm
+    endTime: string; // HH:mm
+}
+
+
 export interface Doctor {
     id: string;
     name: string;
@@ -39,6 +47,9 @@ export interface Doctor {
     email: string;
     imageUrl?: string;
     password?: string; // For doctor portal login
+    experience?: string; // e.g. "5 Years"
+    fees?: number;
+    availability?: Availability[];
 }
 
 export enum PatientStatus {
@@ -64,6 +75,7 @@ export interface Patient {
 
 export enum AppointmentStatus {
     Scheduled = 'Scheduled',
+    Confirmed = 'Confirmed',
     Completed = 'Completed',
     Cancelled = 'Cancelled',
     No_Show = 'No Show',
@@ -71,13 +83,22 @@ export enum AppointmentStatus {
 
 export interface Appointment {
     id: string;
-    patientId: string; // New: link to patient ID
+    hospitalId: string;
+    hospitalName: string;
+    authUid?: string; // Patient's global auth UID
+    patientId?: string; // Patient's ID within the hospital subcollection
     patientName: string;
-    doctorId: string; // New: link to doctor ID
+    patientDetails: {
+        phone: string;
+        gender: 'Male' | 'Female' | 'Other';
+        age: number;
+    };
+    doctorId: string;
     doctorName: string;
     date: string; // ISO string date part
     time: string; // HH:mm format
     status: AppointmentStatus;
+    serialNumber?: number;
 }
 
 export interface ServiceItem {
@@ -117,22 +138,29 @@ export interface SiteSettings {
 export interface Medication {
     id: string;
     name: string;
-    dosage: string;
-    frequency: string;
-    duration: string;
+    dosage: string; // e.g., "500mg"
+    frequency: string; // e.g., "1-0-1"
+    timing: 'Before Meal' | 'After Meal' | 'With Meal';
+    duration: string; // e.g., "7 Days"
 }
+
 
 export interface Prescription {
     id: string;
-    patientId: string;
+    patientId: string; // Hospital-specific patient ID
+    authUid?: string; // Global patient auth ID for querying
     patientName: string;
     patientAge: number;
     patientGender: 'Male' | 'Female' | 'Other';
     doctorId: string;
     doctorName: string;
+    doctorQualifications: string;
     hospitalId: string;
+    hospitalName: string;
+    hospitalLogoUrl?: string;
     date: string; // ISO string
     medications: Medication[];
-    tests: string; // simple textarea for now
-    advice: string; // simple textarea for now
+    tests?: string;
+    advice?: string;
+    nextVisit?: string; // Optional date string
 }

@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { db, auth, firebase } from '../../firebase';
+import { db, auth } from '../../firebase';
 import { SiteSettings, ServiceItem, Testimonial, PlanTier, SocialLink } from '../../types';
 import { PlusIcon } from '../../components/icons/PlusIcon';
 import { TrashIcon } from '../../components/icons/TrashIcon';
 import { EyeIcon } from '../../components/icons/EyeIcon';
 import PermissionGuide from '../../components/dashboard/PermissionGuide';
+import { firebaseConfig } from '../../firebaseConfig';
 
 const generateId = () => '_' + Math.random().toString(36).substr(2, 9);
 
@@ -178,7 +179,7 @@ const WebsiteSettings: React.FC = () => {
     };
 
     if (isLoading) return <div>Loading settings...</div>;
-    if (permissionError) return <PermissionGuide firebaseConfig={(firebase.app() as any).options} />;
+    if (permissionError) return <PermissionGuide firebaseConfig={firebaseConfig} />;
 
     return (
         <div>

@@ -48,7 +48,7 @@ const GeneralTemplate: React.FC<TemplateProps> = ({ hospital }) => {
             <span className="text-2xl font-bold text-slate-900">{hospital.hospitalName}</span>
           </div>
           <nav>
-            <Link to={`/${hospital.subdomain}/dashboard`} className="font-semibold text-teal-600 hover:text-teal-700">Admin Login</Link>
+            <Link to={`/login`} className="font-semibold text-teal-600 hover:text-teal-700">Admin Login</Link>
           </nav>
         </div>
       </header>
@@ -59,6 +59,14 @@ const GeneralTemplate: React.FC<TemplateProps> = ({ hospital }) => {
         <section className="text-center">
           <h1 className="text-4xl md:text-5xl font-bold text-slate-800">Welcome to {hospital.hospitalName}</h1>
           <p className="mt-4 max-w-2xl mx-auto text-lg text-slate-600">Your trusted partner in health. Providing compassionate care for our community.</p>
+           <div className="mt-8">
+                <Link 
+                    to={`/${hospital.subdomain}/book-appointment`} 
+                    className="bg-teal-600 text-white font-bold text-lg px-8 py-3 rounded-lg hover:bg-teal-700 transition-colors shadow-md"
+                >
+                    Book an Appointment
+                </Link>
+            </div>
         </section>
 
         {/* About Us Section */}

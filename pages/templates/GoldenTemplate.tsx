@@ -50,7 +50,7 @@ const GoldenTemplate: React.FC<{ hospital: User }> = ({ hospital }) => {
     fetchData();
   }, [hospital.uid]);
 
-  const patientPortalLink = `/#/patient/login`;
+  const appointmentLink = `/${subdomain}/book-appointment`;
   
   const themeColor = settings?.themeColor || '#a16207';
   const buttonColor = settings?.buttonColor || themeColor;
@@ -99,9 +99,9 @@ const GoldenTemplate: React.FC<{ hospital: User }> = ({ hospital }) => {
             <p className="mt-6 max-w-3xl mx-auto text-xl md:text-2xl text-gray-200">
               Welcome to {hospital.hospitalName}, where your health and well-being are our highest calling.
             </p>
-            <a href={patientPortalLink} style={{ backgroundColor: buttonColor }} className="mt-10 inline-block text-white font-bold text-xl px-10 py-4 rounded-full hover:opacity-90 transition-opacity shadow-lg">
+            <Link to={appointmentLink} style={{ backgroundColor: buttonColor }} className="mt-10 inline-block text-white font-bold text-xl px-10 py-4 rounded-full hover:opacity-90 transition-opacity shadow-lg">
               Book an Appointment
-            </a>
+            </Link>
           </div>
         </section>
 

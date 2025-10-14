@@ -1,14 +1,23 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { db } from '../../../firebase';
-import { Appointment, AppointmentStatus, User } from '../../../types';
-import { useParams } from 'react-router-dom';
+import { Appointment, AppointmentStatus, Patient, PatientStatus } from '../../../types';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import PatientProfileModal from '../../../components/doctor-portal/PatientProfileModal';
+import { CalendarIcon } from '../../../components/icons/CalendarIcon';
+import { ClipboardIcon } from '../../../components/icons/ClipboardIcon';
+import { UserIcon } from '../../../components/icons/UserIcon';
 
 const DoctorDashboardHome: React.FC = () => {
     const { subdomain } = useParams<{ subdomain: string }>();
+    const navigate = useNavigate();
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isActionLoading, setIsActionLoading] = useState<string | null>(null); // To show loading on buttons
     const [doctorProfile, setDoctorProfile] = useState<{id: string, name: string} | null>(null);
     const [error, setError] = useState('');
+    
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
 
     useEffect(() => {
         const profile = JSON.parse(localStorage.getItem('doctorProfile') || 'null');
@@ -35,29 +44,97 @@ const DoctorDashboardHome: React.FC = () => {
                 .orderBy('time', 'asc')
                 .get();
 
-            const appsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
+            const appsData = snapshot.docs
+                .map(doc => ({ id: doc.id, ...doc.data() } as Appointment))
+                .filter(app => app.status === AppointmentStatus.Scheduled || app.status === AppointmentStatus.Confirmed);
+            
             setAppointments(appsData);
 
-        } catch (err) {
+        } catch (err: any) {
             console.error("Error fetching appointments:", err);
-            setError('Could not load appointments.');
+            if (err.code === 'permission-denied') {
+                 setError('Permission Denied. Please ensure your Firestore security rules are up to date.');
+            } else if (err.code === 'failed-precondition') {
+                setError('Query requires a database index. Please check the browser console for a link to create it.');
+            } else {
+                setError('Could not load appointments.');
+            }
         } finally {
             setIsLoading(false);
         }
-
     }, [subdomain, doctorProfile]);
 
     useEffect(() => {
-        fetchAppointments();
-    }, [fetchAppointments]);
+        if(doctorProfile) {
+            fetchAppointments();
+        }
+    }, [doctorProfile, fetchAppointments]);
     
-    const getStatusColor = (status: AppointmentStatus) => {
+    const findOrCreateLocalPatient = async (app: Appointment): Promise<string | null> => {
+        if (app.patientId) return app.patientId;
+        if (!app.authUid || !subdomain) return null;
+
+        try {
+            const usersRef = db.collection('users');
+            const userQuery = await usersRef.where('subdomain', '==', subdomain).limit(1).get();
+            if (userQuery.empty) throw new Error("Hospital not found");
+
+            const hospitalId = userQuery.docs[0].id;
+            const patientsRef = db.collection('users').doc(hospitalId).collection('patients');
+            const patientsQuery = await patientsRef.where('authUid', '==', app.authUid).limit(1).get();
+            
+            if (!patientsQuery.empty) {
+                const localPatientId = patientsQuery.docs[0].id;
+                if (!app.patientId) {
+                    await db.collection('users').doc(hospitalId).collection('appointments').doc(app.id).update({ patientId: localPatientId });
+                }
+                return localPatientId;
+            } else {
+                const newPatientRecord: Omit<Patient, 'id'> = {
+                    name: app.patientName,
+                    age: app.patientDetails.age,
+                    gender: app.patientDetails.gender,
+                    phone: app.patientDetails.phone,
+                    authUid: app.authUid,
+                    status: PatientStatus.In_Treatment,
+                    admittedDate: new Date().toISOString(),
+                };
+                const newPatientDocRef = await patientsRef.add(newPatientRecord);
+                await db.collection('users').doc(hospitalId).collection('appointments').doc(app.id).update({ patientId: newPatientDocRef.id });
+                return newPatientDocRef.id;
+            }
+        } catch (e) {
+            console.error("Error finding/creating patient:", e);
+            setError("Could not access patient record. Please contact admin.");
+            return null;
+        }
+    };
+    
+    const handleViewProfile = async (app: Appointment) => {
+        setIsActionLoading(app.id);
+        const localPatientId = await findOrCreateLocalPatient(app);
+        if (localPatientId) {
+            setSelectedPatientId(localPatientId);
+            setIsModalOpen(true);
+        }
+        setIsActionLoading(null);
+    };
+
+    const handleWritePrescription = async (app: Appointment) => {
+        setIsActionLoading(app.id);
+        const localPatientId = await findOrCreateLocalPatient(app);
+        if (localPatientId) {
+            navigate(`/${subdomain}/doctor-portal/dashboard/prescription/${localPatientId}`);
+        }
+        setIsActionLoading(null);
+    };
+
+    const getStatusChip = (status: AppointmentStatus) => {
+        const base = "px-2 py-0.5 text-xs font-semibold rounded-full";
         switch(status) {
-            case AppointmentStatus.Scheduled: return 'bg-blue-100 text-blue-800';
-            case AppointmentStatus.Completed: return 'bg-green-100 text-green-800';
-            case AppointmentStatus.Cancelled: return 'bg-red-100 text-red-800';
-            case AppointmentStatus.No_Show: return 'bg-slate-200 text-slate-800';
-            default: return 'bg-gray-100 text-gray-800';
+            case AppointmentStatus.Confirmed: return `${base} bg-green-100 text-green-800`;
+            case AppointmentStatus.Scheduled: return `${base} bg-amber-100 text-amber-800`;
+            default: return `${base} bg-slate-100 text-slate-800`;
         }
     };
     
@@ -65,47 +142,73 @@ const DoctorDashboardHome: React.FC = () => {
     const todaysAppointments = appointments.filter(app => app.date === today);
     const upcomingAppointments = appointments.filter(app => app.date > today);
 
-    return (
-        <div>
-            <h1 className="text-3xl font-bold text-slate-900 mb-6">My Schedule</h1>
-            
-            <div className="space-y-8">
-                {/* Today's Appointments */}
-                <div className="bg-white p-6 rounded-xl shadow-md">
-                    <h2 className="text-xl font-bold text-slate-800 mb-4">Today's Appointments</h2>
-                    {isLoading ? <p>Loading...</p> : todaysAppointments.length > 0 ? (
-                        <ul className="space-y-3">
-                            {todaysAppointments.map(app => (
-                                <li key={app.id} className="p-3 bg-slate-50 rounded-lg flex justify-between items-center">
-                                    <div>
-                                        <p className="font-semibold text-slate-800">{app.patientName}</p>
-                                        <p className="text-sm text-slate-500">{app.time}</p>
-                                    </div>
-                                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(app.status)}`}>{app.status}</span>
-                                </li>
-                            ))}
-                        </ul>
-                    ) : <p className="text-slate-500">No appointments scheduled for today.</p>}
+    const AppointmentCard: React.FC<{app: Appointment}> = ({ app }) => (
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex-grow">
+                <div className="flex items-center justify-between">
+                    <p className="font-bold text-slate-800 text-lg">{app.patientName}</p>
+                    <span className={getStatusChip(app.status)}>{app.status}</span>
                 </div>
-
-                {/* Upcoming Appointments */}
-                 <div className="bg-white p-6 rounded-xl shadow-md">
-                    <h2 className="text-xl font-bold text-slate-800 mb-4">Upcoming Appointments</h2>
-                    {isLoading ? <p>Loading...</p> : upcomingAppointments.length > 0 ? (
-                        <ul className="space-y-3">
-                            {upcomingAppointments.map(app => (
-                                <li key={app.id} className="p-3 bg-slate-50 rounded-lg flex justify-between items-center">
-                                    <div>
-                                        <p className="font-semibold text-slate-800">{app.patientName}</p>
-                                        <p className="text-sm text-slate-500">{new Date(app.date).toLocaleDateString()} at {app.time}</p>
-                                    </div>
-                                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(app.status)}`}>{app.status}</span>
-                                </li>
-                            ))}
-                        </ul>
-                    ) : <p className="text-slate-500">No upcoming appointments.</p>}
+                <div className="text-sm text-slate-500 mt-1 flex items-center gap-4">
+                    <span>Time: <span className="font-semibold text-slate-700">{app.time}</span></span>
+                    {app.serialNumber && <span>Serial: <span className="font-bold text-primary-700">#{app.serialNumber}</span></span>}
                 </div>
             </div>
+            <div className="flex-shrink-0 flex items-center gap-2 justify-end">
+                <button onClick={() => handleViewProfile(app)} disabled={isActionLoading === app.id} className="text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-md flex items-center gap-1.5 disabled:opacity-50">
+                    <UserIcon className="h-4 w-4" /> Profile
+                </button>
+                <button onClick={() => handleWritePrescription(app)} disabled={isActionLoading === app.id} className="text-sm font-semibold text-primary-700 bg-primary-100 hover:bg-primary-200 px-3 py-1.5 rounded-md flex items-center gap-1.5 disabled:opacity-50">
+                    <ClipboardIcon className="h-4 w-4" /> Prescription
+                </button>
+            </div>
+        </div>
+    );
+
+    const renderContent = (content: Appointment[]) => {
+        if (isLoading) return <p className="text-center py-8 text-slate-500">Loading appointments...</p>;
+        if (error) return <div className="text-center py-8 bg-red-50 text-red-600 rounded-lg border border-dashed border-red-300">{error}</div>;
+        if (content.length > 0) {
+            return (
+                <div className="space-y-3">
+                   {content.map(app => <AppointmentCard key={app.id} app={app} />)}
+                </div>
+            );
+        }
+        return <div className="text-center py-8 bg-white rounded-lg border border-dashed text-slate-500">No appointments found.</div>
+    }
+
+    return (
+        <div>
+            <h1 className="text-3xl font-bold text-slate-900 mb-2">Welcome, Dr. {doctorProfile?.name.split(' ').pop()}!</h1>
+            <p className="text-slate-600 mb-8">Here is your schedule for today and the upcoming days.</p>
+            
+            <div className="space-y-8">
+                <section>
+                    <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                        <CalendarIcon className="h-6 w-6 text-primary" />
+                        Today's Consultations
+                    </h2>
+                     {renderContent(todaysAppointments)}
+                </section>
+
+                <section>
+                     <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                        <CalendarIcon className="h-6 w-6 text-slate-500" />
+                        Upcoming Appointments
+                    </h2>
+                     {renderContent(upcomingAppointments)}
+                </section>
+            </div>
+            
+            {selectedPatientId && (
+                <PatientProfileModal
+                    isOpen={isModalOpen}
+                    onClose={() => setIsModalOpen(false)}
+                    patientId={selectedPatientId}
+                    subdomain={subdomain!}
+                />
+            )}
         </div>
     );
 };

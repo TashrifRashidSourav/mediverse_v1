@@ -58,7 +58,7 @@ const PremiumTemplate: React.FC<TemplateProps> = ({ hospital }) => {
           <nav className="flex items-center gap-6">
             <a href="#doctors" className="font-semibold text-slate-600 hover:text-blue-600">Our Doctors</a>
             <a href="#contact" className="font-semibold text-slate-600 hover:text-blue-600">Contact</a>
-            <Link to={`/${hospital.subdomain}/dashboard`} className="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700">Admin Login</Link>
+            <Link to={`/login`} className="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700">Admin Login</Link>
           </nav>
         </div>
       </header>
@@ -122,7 +122,7 @@ const PremiumTemplate: React.FC<TemplateProps> = ({ hospital }) => {
                 </p>
             </div>
             <div className="text-center">
-                <a href={settings.contactPhone ? `tel:${settings.contactPhone}` : '#contact'} className="bg-blue-600 text-white font-bold text-lg px-8 py-3 rounded-lg hover:bg-blue-700 transition-colors">Book an Appointment</a>
+                <Link to={`/${hospital.subdomain}/book-appointment`} className="bg-blue-600 text-white font-bold text-lg px-8 py-3 rounded-lg hover:bg-blue-700 transition-colors">Book an Appointment</Link>
             </div>
             <div className="mt-12 border-t border-slate-800 pt-8">
             <p>&copy; {new Date().getFullYear()} {hospital.hospitalName}. All rights reserved.</p>

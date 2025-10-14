@@ -24,6 +24,7 @@ import PatientProfilePage from './pages/patient-portal/dashboard/PatientProfileP
 import PatientAppointmentsPage from './pages/patient-portal/dashboard/PatientAppointmentsPage';
 import PatientPrescriptionsPage from './pages/patient-portal/dashboard/PatientPrescriptionsPage';
 import PatientBillingPage from './pages/patient-portal/dashboard/PatientBillingPage';
+import BookAppointmentPage from './pages/patient-portal/BookAppointmentPage';
 
 // Doctor Portal Imports
 import DoctorLoginPage from './pages/doctor-portal/DoctorLoginPage';
@@ -55,6 +56,13 @@ const App: React.FC = () => {
         <Route path="prescriptions" element={<PatientPrescriptionsPage />} />
         <Route path="billing" element={<PatientBillingPage />} />
       </Route>
+      
+      {/* NEW: Patient Appointment Booking Route */}
+      <Route path="/:subdomain/book-appointment" element={
+        <PatientProtectedRoute>
+          <BookAppointmentPage />
+        </PatientProtectedRoute>
+      } />
 
       {/* Hospital Subdomain Sites */}
       <Route path="/:subdomain" element={<HospitalSitePageWrapper />} />
@@ -99,7 +107,7 @@ const App: React.FC = () => {
 
 const HospitalSitePageWrapper = () => {
     const { subdomain } = useParams<{ subdomain: string }>();
-    const reservedPaths = ['signup', 'login', 'patient', 'doctor-portal'];
+    const reservedPaths = ['signup', 'login', 'patient', 'doctor-portal', 'book-appointment'];
 
     if (subdomain && reservedPaths.includes(subdomain)) {
         return <NotFoundPage />;
