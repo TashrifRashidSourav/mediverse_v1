@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { db, auth } from '../../firebase';
-import { Doctor, User, Patient, Appointment, AppointmentStatus, SiteSettings } from '../../types';
+import { Doctor, User, Patient, Appointment, AppointmentStatus, SiteSettings, PatientStatus } from '../../types';
 import { UserCircleIcon } from '../../components/icons/UserCircleIcon';
 import { BriefcaseIcon } from '../../components/icons/BriefcaseIcon';
 import { DollarSignIcon } from '../../components/icons/DollarSignIcon';
@@ -59,7 +59,7 @@ const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = ({ isOpe
                 const endTime = new Date(`${date}T${availableSlot.endTime}`);
                 
                 while (currentTime < endTime) {
-                    slots.push(currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }));
+                    slots.push(currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }));
                     currentTime.setMinutes(currentTime.getMinutes() + 30); // 30-minute slots
                 }
                 setTimeSlots(slots);
@@ -82,12 +82,35 @@ const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = ({ isOpe
             const user = auth.currentUser;
             if(!user) throw new Error("Not logged in.");
 
-            const appointmentTime = new Date(`${date}T${time.replace(/( AM| PM)/, '')}`).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+            const hospitalPatientsRef = db.collection('users').doc(hospital.uid).collection('patients');
+            const patientQuery = await hospitalPatientsRef.where('authUid', '==', user.uid).limit(1).get();
+            let hospitalPatientId: string;
+
+            if (patientQuery.empty) {
+                // No local record exists for this patient at this hospital, so create one.
+                const newLocalPatient: Omit<Patient, 'id'> = {
+                    name: patientProfile.name,
+                    age: patientProfile.age,
+                    gender: patientProfile.gender,
+                    status: PatientStatus.In_Treatment,
+                    admittedDate: new Date().toISOString(),
+                    phone: patientProfile.phone,
+                    email: patientProfile.email,
+                    authUid: user.uid,
+                    weight: patientProfile.weight,
+                    profilePictureUrl: patientProfile.profilePictureUrl,
+                };
+                const newPatientRef = await hospitalPatientsRef.add(newLocalPatient);
+                hospitalPatientId = newPatientRef.id;
+            } else {
+                hospitalPatientId = patientQuery.docs[0].id;
+            }
 
             const newAppointment: Omit<Appointment, 'id'> = {
                 hospitalId: hospital.uid,
                 hospitalName: hospital.hospitalName,
                 authUid: user.uid,
+                patientId: hospitalPatientId, // <-- CRITICAL FIX
                 patientName: patientProfile.name,
                 patientDetails: {
                     phone: patientProfile.phone,
@@ -97,7 +120,7 @@ const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = ({ isOpe
                 doctorId: doctor.id,
                 doctorName: doctor.name,
                 date: date,
-                time: appointmentTime,
+                time: time,
                 status: AppointmentStatus.Scheduled,
             };
 
