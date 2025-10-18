@@ -20,7 +20,8 @@ const PremiumTemplate: React.FC<TemplateProps> = ({ hospital }) => {
       if (!hospital.uid) return;
       try {
         const settingsPromise = db.collection('users').doc(hospital.uid).collection('settings').doc('site').get();
-        const doctorsPromise = db.collection('users').doc(hospital.uid).collection('doctors').orderBy('name').get();
+        // Performance fix: Limit doctors on the homepage to prevent slow loads for hospitals with many doctors.
+        const doctorsPromise = db.collection('users').doc(hospital.uid).collection('doctors').orderBy('name').limit(9).get();
         
         const [settingsDoc, doctorsSnapshot] = await Promise.all([settingsPromise, doctorsPromise]);
 
@@ -80,18 +81,23 @@ const PremiumTemplate: React.FC<TemplateProps> = ({ hospital }) => {
         <section id="doctors">
           <h2 className="text-4xl font-bold text-slate-800 text-center mb-12">Meet Our Doctors</h2>
           {doctors.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {doctors.map(doctor => (
-                <div key={doctor.id} className="bg-white p-8 rounded-xl shadow-md text-center transform hover:-translate-y-1 transition-transform">
-                    <div className="w-24 h-24 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden mx-auto mb-4">
-                        {doctor.imageUrl ? <img src={doctor.imageUrl} alt={doctor.name} className="w-full h-full object-cover" /> : <UserCircleIcon className="h-16 w-16 text-slate-400" />}
-                    </div>
-                  <h3 className="text-2xl font-bold text-slate-900">{doctor.name}</h3>
-                  <p className="mt-2 text-blue-600 font-semibold">{doctor.specialization}</p>
-                  <p className="mt-1 text-slate-500 text-sm">{doctor.qualifications}</p>
-                </div>
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {doctors.map(doctor => (
+                  <div key={doctor.id} className="bg-white p-8 rounded-xl shadow-md text-center transform hover:-translate-y-1 transition-transform">
+                      <div className="w-24 h-24 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden mx-auto mb-4">
+                          {doctor.imageUrl ? <img src={doctor.imageUrl} alt={doctor.name} className="w-full h-full object-cover" /> : <UserCircleIcon className="h-16 w-16 text-slate-400" />}
+                      </div>
+                    <h3 className="text-2xl font-bold text-slate-900">{doctor.name}</h3>
+                    <p className="mt-2 text-blue-600 font-semibold">{doctor.specialization}</p>
+                    <p className="mt-1 text-slate-500 text-sm">{doctor.qualifications}</p>
+                  </div>
+                ))}
+              </div>
+              {doctors.length === 9 && (
+                <p className="text-center mt-8 text-slate-500">Showing a selection of our specialists. Please contact us for more information.</p>
+              )}
+            </>
           ) : (
             <p className="text-center text-slate-600">Doctor information coming soon. Please add doctors in the dashboard.</p>
           )}

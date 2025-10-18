@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { db, auth } from '../../firebase';
+import { db, auth, firebase } from '../../firebase';
 import { Patient, PatientStatus } from '../../types';
 import PatientModal from '../../components/dashboard/PatientModal';
 import { PlusIcon } from '../../components/icons/PlusIcon';
@@ -8,6 +8,7 @@ import { TrashIcon } from '../../components/icons/TrashIcon';
 import PermissionGuide from '../../components/dashboard/PermissionGuide';
 import { firebaseConfig } from '../../firebaseConfig';
 
+const PAGE_SIZE = 15;
 
 const PatientManagement: React.FC = () => {
     const [patients, setPatients] = useState<Patient[]>([]);
@@ -16,6 +17,12 @@ const PatientManagement: React.FC = () => {
     const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
     const [hospitalId, setHospitalId] = useState<string | null>(null);
     const [permissionError, setPermissionError] = useState(false);
+    
+    const [lastVisible, setLastVisible] = useState<firebase.firestore.QueryDocumentSnapshot | null>(null);
+    const [firstVisible, setFirstVisible] = useState<firebase.firestore.QueryDocumentSnapshot | null>(null);
+    const [isFirstPage, setIsFirstPage] = useState(true);
+    const [isLastPage, setIsLastPage] = useState(false);
+
 
     useEffect(() => {
         const currentUser = auth.currentUser;
@@ -24,14 +31,54 @@ const PatientManagement: React.FC = () => {
         }
     }, []);
 
-    const fetchPatients = useCallback(async () => {
+    const fetchPatients = useCallback(async (direction: 'next' | 'prev' | 'first' = 'first') => {
         if (!hospitalId) return;
         setIsLoading(true);
         setPermissionError(false);
+
+        let query: firebase.firestore.Query;
+        const baseQuery = db.collection('users').doc(hospitalId).collection('patients').orderBy('name');
+        
+        if (direction === 'next' && lastVisible) {
+            query = baseQuery.startAfter(lastVisible).limit(PAGE_SIZE);
+            setIsFirstPage(false);
+        } else if (direction === 'prev' && firstVisible) {
+            query = baseQuery.endBefore(firstVisible).limitToLast(PAGE_SIZE);
+            setIsLastPage(false);
+        } else {
+            query = baseQuery.limit(PAGE_SIZE);
+            setIsFirstPage(true);
+        }
+
         try {
-            const snapshot = await db.collection('users').doc(hospitalId).collection('patients').orderBy('name').get();
+            const snapshot = await query.get();
+            if (snapshot.empty) {
+                if (direction === 'next') setIsLastPage(true);
+                if (direction === 'prev') setIsFirstPage(true);
+                if (direction !== 'first') {
+                    // Do nothing, just stay on the current page
+                } else {
+                    setPatients([]);
+                }
+                setIsLoading(false);
+                return;
+            }
+            
             const patientsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Patient));
             setPatients(patientsData);
+            setFirstVisible(snapshot.docs[0]);
+            setLastVisible(snapshot.docs[snapshot.docs.length - 1]);
+
+            // Lookahead query to check if it's the last page
+            if (direction === 'next' || direction === 'first') {
+                const nextDoc = await baseQuery.startAfter(snapshot.docs[snapshot.docs.length - 1]).limit(1).get();
+                setIsLastPage(nextDoc.empty);
+            }
+             if(direction === 'prev') {
+                const prevDoc = await baseQuery.endBefore(snapshot.docs[0]).limit(1).get();
+                setIsFirstPage(prevDoc.empty);
+            }
+
         } catch (error: any) {
             if (error.code === 'permission-denied') {
                 setPermissionError(true);
@@ -39,13 +86,13 @@ const PatientManagement: React.FC = () => {
             console.error("Error fetching patients:", error);
         }
         setIsLoading(false);
-    }, [hospitalId]);
+    }, [hospitalId, lastVisible, firstVisible]);
 
     useEffect(() => {
         if (hospitalId) {
             fetchPatients();
         }
-    }, [hospitalId, fetchPatients]);
+    }, [hospitalId]);
 
     const handleOpenModal = (patient: Patient | null) => {
         setSelectedPatient(patient);
@@ -65,7 +112,7 @@ const PatientManagement: React.FC = () => {
             } else {
                 await db.collection('users').doc(hospitalId).collection('patients').add(patientData);
             }
-            fetchPatients();
+            fetchPatients('first');
             handleCloseModal();
         } catch (error: any) {
              if (error.code === 'permission-denied') {
@@ -80,7 +127,7 @@ const PatientManagement: React.FC = () => {
         if (window.confirm("Are you sure you want to delete this patient record?")) {
             try {
                 await db.collection('users').doc(hospitalId).collection('patients').doc(patientId).delete();
-                fetchPatients();
+                fetchPatients('first');
             } catch (error: any) {
                 if (error.code === 'permission-denied') {
                     setPermissionError(true);
@@ -117,7 +164,7 @@ const PatientManagement: React.FC = () => {
                 </button>
             </div>
             
-            <div className="bg-white rounded-xl shadow-md overflow-hidden">
+            <div className="bg-white rounded-xl shadow-md">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left min-w-[700px]">
                         <thead className="bg-slate-50">
@@ -158,6 +205,22 @@ const PatientManagement: React.FC = () => {
                             )}
                         </tbody>
                     </table>
+                </div>
+                 <div className="flex justify-end items-center p-4 gap-4">
+                    <button 
+                        onClick={() => fetchPatients('prev')} 
+                        disabled={isFirstPage || isLoading}
+                        className="font-semibold text-slate-600 bg-white border border-slate-300 px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50"
+                    >
+                        Previous
+                    </button>
+                    <button 
+                        onClick={() => fetchPatients('next')} 
+                        disabled={isLastPage || isLoading}
+                        className="font-semibold text-slate-600 bg-white border border-slate-300 px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50"
+                    >
+                        Next
+                    </button>
                 </div>
             </div>
 

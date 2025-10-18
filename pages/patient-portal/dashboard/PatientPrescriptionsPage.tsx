@@ -10,6 +10,10 @@ const PatientPrescriptionsPage: React.FC = () => {
     const [error, setError] = useState('');
     const [selectedPrescription, setSelectedPrescription] = useState<Prescription | null>(null);
 
+    // New state for filters
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filterDate, setFilterDate] = useState('');
+
     const fetchPrescriptions = useCallback(async () => {
         const currentUser = auth.currentUser;
         if (!currentUser) {
@@ -19,18 +23,44 @@ const PatientPrescriptionsPage: React.FC = () => {
         }
         
         setIsLoading(true);
+        setError('');
         try {
-            const snapshot = await db.collectionGroup('prescriptions')
-                .where('authUid', '==', currentUser.uid)
-                .orderBy('date', 'desc')
-                .get();
-                
-            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Prescription));
-            setPrescriptions(data);
+            // Firestore collection group queries require a specific index. 
+            // To avoid manual index creation for this demo, we are fetching all hospitals
+            // and then querying each one for the patient's prescriptions.
+            // WARNING: This approach is NOT scalable for a production application with many hospitals.
+            // The recommended production solution is to create the single-field index in Firestore
+            // as suggested by the error message, and use the more efficient collectionGroup query:
+            // const snapshot = await db.collectionGroup('prescriptions').where('authUid', '==', currentUser.uid).get();
+
+            // 1. Fetch all hospitals
+            const hospitalsSnapshot = await db.collection('users').get();
+            const hospitalIds = hospitalsSnapshot.docs.map(doc => doc.id);
+
+            // 2. Create a query promise for each hospital
+            const prescriptionPromises = hospitalIds.map(hospitalId => 
+                db.collection('users').doc(hospitalId)
+                  .collection('prescriptions')
+                  .where('authUid', '==', currentUser.uid)
+                  .get()
+            );
+
+            // 3. Execute all queries and flatten the results
+            const prescriptionSnapshots = await Promise.all(prescriptionPromises);
+            const allPrescriptions: Prescription[] = [];
+            prescriptionSnapshots.forEach(snapshot => {
+                snapshot.forEach(doc => {
+                    allPrescriptions.push({ id: doc.id, ...doc.data() } as Prescription);
+                });
+            });
+
+            // 4. Sort and set state
+            allPrescriptions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            setPrescriptions(allPrescriptions);
 
         } catch (err) {
             console.error(err);
-            setError('Failed to fetch prescriptions. This can sometimes be fixed by updating database security rules.');
+            setError('Failed to fetch prescriptions. Please ensure your Firestore security rules allow reading the "users" collection.');
         } finally {
             setIsLoading(false);
         }
@@ -40,11 +70,46 @@ const PatientPrescriptionsPage: React.FC = () => {
         fetchPrescriptions();
     }, [fetchPrescriptions]);
 
+    const filteredPrescriptions = prescriptions.filter(p => {
+        const doctorNameMatch = p.doctorName.toLowerCase().includes(searchTerm.toLowerCase());
+        const dateMatch = !filterDate || p.date.startsWith(filterDate);
+        return doctorNameMatch && dateMatch;
+    });
 
     return (
         <div>
             <h1 className="text-3xl font-bold text-slate-900 mb-6">My Prescriptions</h1>
             
+            <div className="bg-white p-4 rounded-xl shadow-md mb-6 flex flex-col sm:flex-row gap-4 items-center print:hidden">
+                <input
+                    type="text"
+                    placeholder="Search by Doctor's Name..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full sm:flex-grow px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition"
+                    aria-label="Search by doctor name"
+                />
+                <div className="w-full sm:w-auto flex items-center gap-2">
+                    <input
+                        type="date"
+                        value={filterDate}
+                        onChange={(e) => setFilterDate(e.target.value)}
+                        className="w-full sm:w-auto px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition"
+                        aria-label="Filter by date"
+                    />
+                    <button
+                        onClick={() => {
+                            setSearchTerm('');
+                            setFilterDate('');
+                        }}
+                        className="bg-slate-200 text-slate-700 font-semibold py-2 px-4 rounded-lg hover:bg-slate-300 transition-colors"
+                        aria-label="Clear filters"
+                    >
+                        Clear
+                    </button>
+                </div>
+            </div>
+
             {isLoading ? (
                  <p className="text-center p-8 text-slate-500">Loading prescriptions...</p>
             ) : error ? (
@@ -57,9 +122,17 @@ const PatientPrescriptionsPage: React.FC = () => {
                        Your digital prescriptions from Mediverse hospitals will appear here once they are issued by your doctor.
                     </p>
                 </div>
+            ) : filteredPrescriptions.length === 0 ? (
+                 <div className="bg-white rounded-xl shadow-md p-8 text-center">
+                    <ReportsIcon className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+                    <h2 className="text-2xl font-bold text-slate-800">No Matching Prescriptions</h2>
+                    <p className="mt-2 text-slate-600 max-w-md mx-auto">
+                       No prescriptions found for the selected filters. Try clearing the filters to see all your prescriptions.
+                    </p>
+                </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {prescriptions.map(p => (
+                    {filteredPrescriptions.map(p => (
                         <button 
                             key={p.id}
                             onClick={() => setSelectedPrescription(p)}

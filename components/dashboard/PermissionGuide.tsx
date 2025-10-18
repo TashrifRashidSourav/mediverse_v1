@@ -42,23 +42,37 @@ service cloud.firestore {
         allow create, update, delete: if isOwner(hospitalId);
       }
 
-      // --- Patients Subcollection ---
+      // --- Patients Subcollection (Managed by Admin) ---
       match /patients/{docId} {
-        // Private to the hospital admin
+        // Private to the hospital admin for management purposes
         allow read, write, create, delete: if isOwner(hospitalId);
       }
 
       // --- Appointments Subcollection ---
-      match /appointments/{docId} {
-        // Private to the hospital admin
-        allow read, write, create, delete: if isOwner(hospitalId);
+      match /appointments/{appointmentId} {
+        // Hospital admin can update/delete any appointment
+        allow update, delete: if isOwner(hospitalId);
+
+        // Patient can create their own appointment, Hospital admin can also create.
+        allow create: if isOwner(hospitalId) || (signedIn() && request.resource.data.authUid == request.auth.uid);
+
+        // Patient can read their own appointment, Hospital admin can read all.
+        allow read: if isOwner(hospitalId) || (signedIn() && resource.data.authUid == request.auth.uid);
       }
 
       // --- Prescriptions Subcollection ---
-      match /prescriptions/{docId} {
-        // Only the hospital admin can manage prescriptions for now.
-        // A future update can add rules for authenticated doctors.
-        allow read, write, create, delete: if isOwner(hospitalId);
+      match /prescriptions/{prescriptionId} {
+        // Allow creation if the doctorId and hospitalId in the request exist in the DB.
+        // This is for the doctor portal which does not use Firebase Auth.
+        // NOTE: This rule still carries some risk. A more secure implementation would use Firebase Auth for doctors.
+        allow create: if request.resource.data.hospitalId == hospitalId &&
+                       exists(/databases/$(database)/documents/users/$(hospitalId)/doctors/$(request.resource.data.doctorId));
+
+        // Only the hospital admin can update or delete prescriptions.
+        allow update, delete: if isOwner(hospitalId);
+        
+        // Patient can read their own prescription, and the hospital admin can read all.
+        allow read: if isOwner(hospitalId) || (signedIn() && resource.data.authUid == request.auth.uid);
       }
 
       // --- Website Settings Subcollection ---
@@ -108,7 +122,7 @@ service cloud.firestore {
             </ol>
             <CodeBlock>{rules}</CodeBlock>
             <p className="mt-4 text-sm text-red-600">
-                After updating the rules, please refresh this page. These rules ensure that both hospital admins and universal patients can securely access their own data.
+                After updating the rules, please refresh this page. These new rules correctly allow patients to view their own appointments and prescriptions.
             </p>
         </div>
     );

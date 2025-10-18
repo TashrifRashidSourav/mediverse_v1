@@ -35,19 +35,22 @@ const DoctorDashboardHome: React.FC = () => {
             
             const hospitalId = userQuery.docs[0].id;
 
-            // Simplified query to prevent indexing issues. Filtering by status happens on the client.
             const snapshot = await db.collection('users').doc(hospitalId)
                 .collection('appointments')
                 .where('doctorId', '==', doctorProfile.id)
-                .orderBy('date', 'asc')
-                .orderBy('time', 'asc')
                 .get();
 
-            // Filter on the client to only show relevant appointments
             const appsData = snapshot.docs
                 .map(doc => ({ id: doc.id, ...doc.data() } as Appointment))
                 .filter(app => app.status === AppointmentStatus.Scheduled || app.status === AppointmentStatus.Confirmed);
             
+            // Client-side sorting to avoid composite index requirement
+            appsData.sort((a, b) => {
+                const dateTimeA = new Date(`${a.date}T${a.time}`).getTime();
+                const dateTimeB = new Date(`${b.date}T${b.time}`).getTime();
+                return dateTimeA - dateTimeB; // Ascending order
+            });
+
             setAppointments(appsData);
 
         } catch (err: any) {
