@@ -4,12 +4,14 @@ import Sidebar from '../components/dashboard/Sidebar';
 import { MenuIcon } from '../components/icons/MenuIcon';
 import { ChevronDownIcon } from '../components/icons/ChevronDownIcon';
 import { auth, db } from '../firebase';
-import { type User, type SiteSettings } from '../types';
+import { type User, type SiteSettings, PlanTier } from '../types';
+import MediBot from '../components/MediBot';
 
 const DashboardPage: React.FC = () => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [userProfile, setUserProfile] = useState<Partial<User>>({});
   const [siteSettings, setSiteSettings] = useState<Partial<SiteSettings>>({});
+  const [showMediBot, setShowMediBot] = useState(false);
   const { subdomain } = useParams<{ subdomain: string }>();
   const navigate = useNavigate();
 
@@ -25,17 +27,25 @@ const DashboardPage: React.FC = () => {
           return;
       }
       
-      const fetchSettings = async () => {
+      const fetchData = async () => {
           try {
+            const userDoc = await db.collection('users').doc(currentUser.uid).get();
+            if (userDoc.exists) {
+                const userData = userDoc.data() as User;
+                if (userData.plan === PlanTier.Golden) {
+                    setShowMediBot(true);
+                }
+            }
+
             const settingsDoc = await db.collection('users').doc(currentUser.uid).collection('settings').doc('site').get();
             if (settingsDoc.exists) {
                 setSiteSettings(settingsDoc.data() as SiteSettings);
             }
           } catch (error) {
-              console.error("Error fetching dashboard settings:", error);
+              console.error("Error fetching dashboard data:", error);
           }
       };
-      fetchSettings();
+      fetchData();
 
     } else {
         auth.signOut();
@@ -90,6 +100,7 @@ const DashboardPage: React.FC = () => {
           <Outlet />
         </main>
       </div>
+      {showMediBot && <MediBot />}
     </div>
   );
 };

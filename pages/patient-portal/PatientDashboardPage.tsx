@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
-import { auth, db } from '../../firebase';
+import { auth, db, firebase } from '../../firebase';
 import PatientSidebar from '../../components/patient-portal/PatientSidebar';
 import { MenuIcon } from '../../components/icons/MenuIcon';
 import { ChevronDownIcon } from '../../components/icons/ChevronDownIcon';
 import { UserCircleIcon } from '../../components/icons/UserCircleIcon';
+import { PlanTier } from '../../types';
+import MediBot from '../../components/MediBot';
 
 interface PatientProfile {
     uid: string;
@@ -15,6 +17,7 @@ interface PatientProfile {
 const PatientDashboardPage: React.FC = () => {
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const [patientProfile, setPatientProfile] = useState<PatientProfile | null>(null);
+    const [showMediBot, setShowMediBot] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -23,14 +26,35 @@ const PatientDashboardPage: React.FC = () => {
 
         if (storedProfile && currentUser) {
             const parsed = JSON.parse(storedProfile);
-            // Ensure the stored profile matches the authenticated user
             if (parsed.uid !== currentUser.uid) {
                 handleLogout();
                 return;
             }
             setPatientProfile(parsed);
             
-            // Listen for real-time updates from the global patient collection
+            const checkGoldenPlanAccess = async () => {
+                try {
+                    const appointmentQuery = db.collectionGroup('appointments').where('authUid', '==', currentUser.uid).get();
+                    const prescriptionQuery = db.collectionGroup('prescriptions').where('authUid', '==', currentUser.uid).get();
+
+                    const [appSnapshot, presSnapshot] = await Promise.all([appointmentQuery, prescriptionQuery]);
+
+                    const hospitalIds = new Set<string>();
+                    appSnapshot.forEach(doc => hospitalIds.add(doc.data().hospitalId));
+                    presSnapshot.forEach(doc => hospitalIds.add(doc.data().hospitalId));
+
+                    if (hospitalIds.size > 0) {
+                        const hospitalDocs = await db.collection('users').where(firebase.firestore.FieldPath.documentId(), 'in', Array.from(hospitalIds)).get();
+                        const hasGolden = hospitalDocs.docs.some(doc => doc.data().plan === PlanTier.Golden);
+                        setShowMediBot(hasGolden);
+                    }
+                } catch (e) {
+                    console.error("Could not check for Golden Plan access:", e);
+                }
+            };
+            
+            checkGoldenPlanAccess();
+
             const patientRef = db.collection('patients').doc(currentUser.uid);
             const unsubscribe = patientRef.onSnapshot(doc => {
                  if (doc.exists) {
@@ -41,16 +65,14 @@ const PatientDashboardPage: React.FC = () => {
                         profilePictureUrl: data?.profilePictureUrl 
                     };
                     setPatientProfile(updatedProfile);
-                    // Keep localStorage in sync
                     localStorage.setItem('patientProfile', JSON.stringify(updatedProfile));
                  } else {
-                    // Profile was deleted from DB, force logout
                     handleLogout();
                  }
             });
             return () => unsubscribe();
         } else {
-            handleLogout(); // No profile or user, force logout
+            handleLogout();
         }
     }, [navigate]);
 
@@ -99,6 +121,7 @@ const PatientDashboardPage: React.FC = () => {
                     <Outlet />
                 </main>
             </div>
+            {showMediBot && <MediBot />}
         </div>
     );
 };

@@ -8,6 +8,7 @@ import { XCircleIcon } from '../../components/icons/XCircleIcon';
 import PermissionGuide from '../../components/dashboard/PermissionGuide';
 import { XIcon } from '../../components/icons/XIcon';
 
+const PAGE_SIZE = 15;
 
 const ConfirmAppointmentModal: React.FC<{
     isOpen: boolean;
@@ -63,6 +64,11 @@ const AppointmentManagement: React.FC = () => {
     const [hospitalId, setHospitalId] = useState<string | null>(null);
     const [permissionError, setPermissionError] = useState(false);
 
+    const [lastVisible, setLastVisible] = useState<firebase.firestore.QueryDocumentSnapshot | null>(null);
+    const [firstVisible, setFirstVisible] = useState<firebase.firestore.QueryDocumentSnapshot | null>(null);
+    const [isFirstPage, setIsFirstPage] = useState(true);
+    const [isLastPage, setIsLastPage] = useState(false);
+
     useEffect(() => {
         const currentUser = auth.currentUser;
         if (currentUser) {
@@ -70,46 +76,69 @@ const AppointmentManagement: React.FC = () => {
         }
     }, []);
 
-    const fetchData = useCallback(async () => {
+    const fetchAppointments = useCallback(async (direction: 'next' | 'prev' | 'first' = 'first') => {
         if (!hospitalId) return;
         setIsLoading(true);
         setPermissionError(false);
-        try {
-            const appointmentsPromise = db.collection('users').doc(hospitalId).collection('appointments').orderBy('date', 'desc').get();
-            const doctorsPromise = db.collection('users').doc(hospitalId).collection('doctors').get();
-            const patientsPromise = db.collection('users').doc(hospitalId).collection('patients').get();
-            
-            const [appointmentsSnapshot, doctorsSnapshot, patientsSnapshot] = await Promise.all([appointmentsPromise, doctorsPromise, patientsPromise]);
 
-            setAppointments(appointmentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment)));
-            setDoctors(doctorsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Doctor)));
-            setPatients(patientsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Patient)));
-        } catch (error: any) {
-            if (error.code === 'permission-denied') {
-                setPermissionError(true);
+        let query: firebase.firestore.Query;
+        const baseQuery = db.collection('users').doc(hospitalId).collection('appointments').orderBy('date', 'desc');
+
+        if (direction === 'next' && lastVisible) {
+            query = baseQuery.startAfter(lastVisible).limit(PAGE_SIZE);
+            setIsFirstPage(false);
+        } else if (direction === 'prev' && firstVisible) {
+            query = baseQuery.endBefore(firstVisible).limitToLast(PAGE_SIZE);
+            setIsLastPage(false);
+        } else {
+            query = baseQuery.limit(PAGE_SIZE);
+            setIsFirstPage(true);
+        }
+
+        try {
+            const snapshot = await query.get();
+            if (snapshot.empty) {
+                if (direction === 'next') setIsLastPage(true);
+                if (direction === 'prev') setIsFirstPage(true);
+                if (direction !== 'first') {} else { setAppointments([]); }
+                setIsLoading(false);
+                return;
             }
-            console.error("Error fetching data:", error);
+
+            setAppointments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment)));
+            setFirstVisible(snapshot.docs[0]);
+            setLastVisible(snapshot.docs[snapshot.docs.length - 1]);
+
+            if (direction === 'next' || direction === 'first') {
+                const nextDoc = await baseQuery.startAfter(snapshot.docs[snapshot.docs.length - 1]).limit(1).get();
+                setIsLastPage(nextDoc.empty);
+            }
+            if(direction === 'prev') {
+                const prevDoc = await baseQuery.endBefore(snapshot.docs[0]).limit(1).get();
+                setIsFirstPage(prevDoc.empty);
+            }
+
+        } catch (error: any) {
+            if (error.code === 'permission-denied') setPermissionError(true);
+            console.error("Error fetching appointments:", error);
         }
         setIsLoading(false);
-    }, [hospitalId]);
+    }, [hospitalId, lastVisible, firstVisible]);
 
     useEffect(() => {
         if(hospitalId) {
-            fetchData();
+            fetchAppointments('first');
+            // Fetch doctors and patients only once as they are for dropdowns
+            const fetchMeta = async () => {
+                const doctorsPromise = db.collection('users').doc(hospitalId!).collection('doctors').get();
+                const patientsPromise = db.collection('users').doc(hospitalId!).collection('patients').get();
+                 const [doctorsSnapshot, patientsSnapshot] = await Promise.all([doctorsPromise, patientsPromise]);
+                setDoctors(doctorsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Doctor)));
+                setPatients(patientsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Patient)));
+            };
+            fetchMeta().catch(console.error);
         }
-    }, [hospitalId, fetchData]);
-
-    const handleOpenModal = (appointment: Appointment | null) => {
-        // This modal is now only for legacy/admin-created appointments
-        // As patient-created appointments are different. This might need refactoring later.
-        // For now, let's disable editing patient-booked appointments.
-        if (appointment?.authUid) {
-            alert("This appointment was booked by a patient and cannot be edited directly. Please use the confirm/cancel actions.");
-            return;
-        }
-        // This is a placeholder and should be updated to a unified modal.
-        alert("This feature is for legacy appointments. Patient-booked appointments should be managed with confirm/cancel.");
-    };
+    }, [hospitalId]);
 
     const handleConfirm = async (serialNumber: number) => {
         if (!hospitalId || !selectedAppointment) return;
@@ -118,7 +147,7 @@ const AppointmentManagement: React.FC = () => {
                 status: AppointmentStatus.Confirmed,
                 serialNumber: serialNumber,
             });
-            fetchData();
+            fetchAppointments('first');
             setIsConfirmModalOpen(false);
             setSelectedAppointment(null);
         } catch (error) {
@@ -133,7 +162,7 @@ const AppointmentManagement: React.FC = () => {
                 await db.collection('users').doc(hospitalId).collection('appointments').doc(appointment.id).update({
                     status: AppointmentStatus.Cancelled
                 });
-                fetchData();
+                fetchAppointments('first');
             } catch (error) {
                 console.error("Error cancelling appointment:", error);
             }
@@ -162,7 +191,7 @@ const AppointmentManagement: React.FC = () => {
                 <p className="text-slate-500 text-sm">Patient-booked appointments appear here automatically.</p>
             </div>
             
-            <div className="bg-white rounded-xl shadow-md overflow-hidden">
+            <div className="bg-white rounded-xl shadow-md">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left min-w-[700px]">
                         <thead className="bg-slate-50">
@@ -220,6 +249,22 @@ const AppointmentManagement: React.FC = () => {
                             )}
                         </tbody>
                     </table>
+                </div>
+                <div className="flex justify-end items-center p-4 gap-4">
+                    <button 
+                        onClick={() => fetchAppointments('prev')} 
+                        disabled={isFirstPage || isLoading}
+                        className="font-semibold text-slate-600 bg-white border border-slate-300 px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50"
+                    >
+                        Previous
+                    </button>
+                    <button 
+                        onClick={() => fetchAppointments('next')} 
+                        disabled={isLastPage || isLoading}
+                        className="font-semibold text-slate-600 bg-white border border-slate-300 px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50"
+                    >
+                        Next
+                    </button>
                 </div>
             </div>
 

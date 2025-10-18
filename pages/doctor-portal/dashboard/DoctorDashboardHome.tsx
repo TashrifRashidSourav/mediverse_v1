@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { db } from '../../../firebase';
-import { Appointment, AppointmentStatus, Patient, PatientStatus } from '../../../types';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { Appointment, AppointmentStatus, Patient } from '../../../types';
+import { useParams, Link } from 'react-router-dom';
 import PatientProfileModal from '../../../components/doctor-portal/PatientProfileModal';
 import { CalendarIcon } from '../../../components/icons/CalendarIcon';
 import { ClipboardIcon } from '../../../components/icons/ClipboardIcon';
@@ -9,10 +9,8 @@ import { UserIcon } from '../../../components/icons/UserIcon';
 
 const DoctorDashboardHome: React.FC = () => {
     const { subdomain } = useParams<{ subdomain: string }>();
-    const navigate = useNavigate();
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [isActionLoading, setIsActionLoading] = useState<string | null>(null); // To show loading on buttons
     const [doctorProfile, setDoctorProfile] = useState<{id: string, name: string} | null>(null);
     const [error, setError] = useState('');
     
@@ -40,14 +38,19 @@ const DoctorDashboardHome: React.FC = () => {
             const snapshot = await db.collection('users').doc(hospitalId)
                 .collection('appointments')
                 .where('doctorId', '==', doctorProfile.id)
-                .orderBy('date', 'asc')
-                .orderBy('time', 'asc')
                 .get();
 
             const appsData = snapshot.docs
                 .map(doc => ({ id: doc.id, ...doc.data() } as Appointment))
                 .filter(app => app.status === AppointmentStatus.Scheduled || app.status === AppointmentStatus.Confirmed);
             
+            // Client-side sorting to avoid composite index requirement
+            appsData.sort((a, b) => {
+                const dateTimeA = new Date(`${a.date}T${a.time}`).getTime();
+                const dateTimeB = new Date(`${b.date}T${b.time}`).getTime();
+                return dateTimeA - dateTimeB; // Ascending order
+            });
+
             setAppointments(appsData);
 
         } catch (err: any) {
@@ -62,6 +65,7 @@ const DoctorDashboardHome: React.FC = () => {
         } finally {
             setIsLoading(false);
         }
+
     }, [subdomain, doctorProfile]);
 
     useEffect(() => {
@@ -70,63 +74,11 @@ const DoctorDashboardHome: React.FC = () => {
         }
     }, [doctorProfile, fetchAppointments]);
     
-    const findOrCreateLocalPatient = async (app: Appointment): Promise<string | null> => {
-        if (app.patientId) return app.patientId;
-        if (!app.authUid || !subdomain) return null;
-
-        try {
-            const usersRef = db.collection('users');
-            const userQuery = await usersRef.where('subdomain', '==', subdomain).limit(1).get();
-            if (userQuery.empty) throw new Error("Hospital not found");
-
-            const hospitalId = userQuery.docs[0].id;
-            const patientsRef = db.collection('users').doc(hospitalId).collection('patients');
-            const patientsQuery = await patientsRef.where('authUid', '==', app.authUid).limit(1).get();
-            
-            if (!patientsQuery.empty) {
-                const localPatientId = patientsQuery.docs[0].id;
-                if (!app.patientId) {
-                    await db.collection('users').doc(hospitalId).collection('appointments').doc(app.id).update({ patientId: localPatientId });
-                }
-                return localPatientId;
-            } else {
-                const newPatientRecord: Omit<Patient, 'id'> = {
-                    name: app.patientName,
-                    age: app.patientDetails.age,
-                    gender: app.patientDetails.gender,
-                    phone: app.patientDetails.phone,
-                    authUid: app.authUid,
-                    status: PatientStatus.In_Treatment,
-                    admittedDate: new Date().toISOString(),
-                };
-                const newPatientDocRef = await patientsRef.add(newPatientRecord);
-                await db.collection('users').doc(hospitalId).collection('appointments').doc(app.id).update({ patientId: newPatientDocRef.id });
-                return newPatientDocRef.id;
-            }
-        } catch (e) {
-            console.error("Error finding/creating patient:", e);
-            setError("Could not access patient record. Please contact admin.");
-            return null;
-        }
-    };
-    
-    const handleViewProfile = async (app: Appointment) => {
-        setIsActionLoading(app.id);
-        const localPatientId = await findOrCreateLocalPatient(app);
-        if (localPatientId) {
-            setSelectedPatientId(localPatientId);
+    const handleViewProfile = (patientId?: string) => {
+        if(patientId) {
+            setSelectedPatientId(patientId);
             setIsModalOpen(true);
         }
-        setIsActionLoading(null);
-    };
-
-    const handleWritePrescription = async (app: Appointment) => {
-        setIsActionLoading(app.id);
-        const localPatientId = await findOrCreateLocalPatient(app);
-        if (localPatientId) {
-            navigate(`/${subdomain}/doctor-portal/dashboard/prescription/${localPatientId}`);
-        }
-        setIsActionLoading(null);
     };
 
     const getStatusChip = (status: AppointmentStatus) => {
@@ -155,12 +107,12 @@ const DoctorDashboardHome: React.FC = () => {
                 </div>
             </div>
             <div className="flex-shrink-0 flex items-center gap-2 justify-end">
-                <button onClick={() => handleViewProfile(app)} disabled={isActionLoading === app.id} className="text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-md flex items-center gap-1.5 disabled:opacity-50">
+                <button onClick={() => handleViewProfile(app.patientId)} className="text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-md flex items-center gap-1.5">
                     <UserIcon className="h-4 w-4" /> Profile
                 </button>
-                <button onClick={() => handleWritePrescription(app)} disabled={isActionLoading === app.id} className="text-sm font-semibold text-primary-700 bg-primary-100 hover:bg-primary-200 px-3 py-1.5 rounded-md flex items-center gap-1.5 disabled:opacity-50">
+                <Link to={`/${subdomain}/doctor-portal/dashboard/prescription/${app.patientId}`} className="text-sm font-semibold text-primary-700 bg-primary-100 hover:bg-primary-200 px-3 py-1.5 rounded-md flex items-center gap-1.5">
                     <ClipboardIcon className="h-4 w-4" /> Prescription
-                </button>
+                </Link>
             </div>
         </div>
     );

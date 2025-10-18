@@ -4,7 +4,9 @@ import DoctorSidebar from '../../components/doctor-portal/DoctorSidebar';
 import { MenuIcon } from '../../components/icons/MenuIcon';
 import { ChevronDownIcon } from '../../components/icons/ChevronDownIcon';
 import { UserCircleIcon } from '../../components/icons/UserCircleIcon';
-import { SiteSettings } from '../../types';
+import { SiteSettings, PlanTier, User } from '../../types';
+import MediBot from '../../components/MediBot';
+import { db } from '../../firebase';
 
 interface DoctorProfile {
     id: string;
@@ -17,6 +19,7 @@ interface DoctorProfile {
 const DoctorDashboardPage: React.FC = () => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [doctorProfile, setDoctorProfile] = useState<DoctorProfile | null>(null);
+  const [showMediBot, setShowMediBot] = useState(false);
   const navigate = useNavigate();
   const { subdomain } = useParams<{ subdomain: string }>();
 
@@ -24,14 +27,27 @@ const DoctorDashboardPage: React.FC = () => {
     const storedProfile = localStorage.getItem('doctorProfile');
     if (storedProfile) {
       const parsedProfile = JSON.parse(storedProfile);
-      // Security check: ensure the profile's subdomain matches the URL
       if(parsedProfile.subdomain !== subdomain) {
           handleLogout();
       } else {
           setDoctorProfile(parsedProfile);
+          // Check hospital plan
+          const checkPlan = async () => {
+            try {
+              const userQuery = await db.collection('users').where('subdomain', '==', subdomain).limit(1).get();
+              if(!userQuery.empty) {
+                const hospitalData = userQuery.docs[0].data() as User;
+                if (hospitalData.plan === PlanTier.Golden) {
+                  setShowMediBot(true);
+                }
+              }
+            } catch (e) {
+              console.error("Could not verify hospital plan for doctor", e);
+            }
+          };
+          checkPlan();
       }
     } else {
-        // No profile, force logout
         navigate(`/${subdomain}/doctor-portal/login`);
     }
   }, [subdomain, navigate]);
@@ -83,6 +99,7 @@ const DoctorDashboardPage: React.FC = () => {
           <Outlet />
         </main>
       </div>
+      {showMediBot && <MediBot />}
     </div>
   );
 };
