@@ -8,23 +8,39 @@ interface AuthenticatedRouteProps {
 }
 
 const AuthenticatedRoute: React.FC<AuthenticatedRouteProps> = ({ children }) => {
-  const [user, setUser] = useState<firebase.User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null); // null means loading
 
   useEffect(() => {
+    // First, check for the doctor's localStorage session, which is synchronous.
+    const doctorProfile = localStorage.getItem('doctorProfile');
+    if (doctorProfile) {
+      setIsAuthenticated(true);
+      return; // Found a valid session, no need to check Firebase.
+    }
+
+    // If no doctor session, check for a Firebase Auth session (for patients).
+    // This is asynchronous.
     const unsubscribe = auth.onAuthStateChanged((currentUser) => {
-      setUser(currentUser);
-      setLoading(false);
+      // A user is authenticated as a patient if currentUser is not null AND they have a patientProfile.
+      // This prevents hospital admins from accessing the video call route.
+      const patientProfile = localStorage.getItem('patientProfile');
+      if (currentUser && patientProfile) {
+        setIsAuthenticated(true);
+      } else {
+        setIsAuthenticated(false);
+      }
     });
+
+    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, []);
 
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  if (isAuthenticated === null) {
+    return <div className="min-h-screen flex items-center justify-center">Authenticating...</div>;
   }
 
-  if (!user) {
-    // Redirect to the main page to let them choose a login path.
+  if (!isAuthenticated) {
+    // If not authenticated as either a doctor or a patient, redirect to the home page.
     return <Navigate to="/" replace />;
   }
 
