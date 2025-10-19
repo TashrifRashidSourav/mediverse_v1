@@ -75,36 +75,52 @@ const VideoCallPage: React.FC = () => {
 
         await db.runTransaction(async (transaction) => {
             const callDoc = await transaction.get(callDocRef);
-            if (!callDoc.exists || !callDoc.data()?.offer) {
+            if (!callDoc.exists) {
                 roleRef.current = 'caller';
-                const offerDescription = await pc.createOffer();
-                await pc.setLocalDescription(offerDescription);
-                transaction.set(callDocRef, { offer: { type: offerDescription.type, sdp: offerDescription.sdp } });
+                transaction.set(callDocRef, { initiator: localUser.uid || localUser.id });
             } else {
                 roleRef.current = 'callee';
             }
         });
 
         if (roleRef.current === 'caller') {
+            const [callerCandidates, calleeCandidates] = await Promise.all([
+                callerCandidatesCollection.get(),
+                calleeCandidatesCollection.get()
+            ]);
+            const batch = db.batch();
+            callerCandidates.forEach(doc => batch.delete(doc.ref));
+            calleeCandidates.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
+
+            const offerDescription = await pc.createOffer();
+            await pc.setLocalDescription(offerDescription);
+            await callDocRef.set({ offer: { type: offerDescription.type, sdp: offerDescription.sdp } });
+
             callDocRef.onSnapshot(async (snapshot) => {
                 const data = snapshot.data();
                 if (!pc.currentRemoteDescription && data?.answer) {
-                    const answerDescription = new RTCSessionDescription(data.answer);
-                    await pc.setRemoteDescription(answerDescription);
+                    await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
                 }
             });
+
             calleeCandidatesCollection.onSnapshot((snapshot) => {
                 snapshot.docChanges().forEach((change) => {
                     if (change.type === 'added') pc.addIceCandidate(new RTCIceCandidate(change.doc.data()));
                 });
             });
-        } else {
-            const callDoc = await callDocRef.get();
-            const offer = callDoc.data()!.offer;
-            await pc.setRemoteDescription(new RTCSessionDescription(offer));
-            const answerDescription = await pc.createAnswer();
-            await pc.setLocalDescription(answerDescription);
-            await callDocRef.update({ answer: { type: answerDescription.type, sdp: answerDescription.sdp } });
+
+        } else { // Callee logic
+            const unsubscribeOffer = callDocRef.onSnapshot(async (snapshot) => {
+                const data = snapshot.data();
+                if (!pc.currentRemoteDescription && data?.offer) {
+                    unsubscribeOffer();
+                    await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+                    const answerDescription = await pc.createAnswer();
+                    await pc.setLocalDescription(answerDescription);
+                    await callDocRef.update({ answer: { type: answerDescription.type, sdp: answerDescription.sdp } });
+                }
+            });
 
             callerCandidatesCollection.onSnapshot((snapshot) => {
                 snapshot.docChanges().forEach((change) => {
@@ -123,7 +139,6 @@ const VideoCallPage: React.FC = () => {
 
         if (isDoctor && hospitalId && appointmentId) {
             try {
-                // FIX: Correctly reference subcollections from the document, not the parent collection.
                 const signalingDocRef = db.collection('users').doc(hospitalId).collection('appointments').doc(appointmentId).collection('webrtc').doc('signaling');
 
                 const [signalingDoc, callerCandidates, calleeCandidates] = await Promise.all([
@@ -158,7 +173,11 @@ const VideoCallPage: React.FC = () => {
                 }
                 setAppointment(appData);
             } catch (err: any) {
-                setError({ type: 'auth', message: err.message || 'Failed to load meeting details.' });
+                if (err.code === 'permission-denied') {
+                    setError({ type: 'auth', message: 'Permission Denied. Please ensure your Firestore security rules allow access to appointments and their subcollections.' });
+                } else {
+                    setError({ type: 'auth', message: err.message || 'Failed to load meeting details.' });
+                }
             }
         };
 
@@ -190,11 +209,8 @@ const VideoCallPage: React.FC = () => {
         return () => { cleanup(); };
     }, [hospitalId, appointmentId]);
 
-    // This effect handles setting up the WebRTC connection after the user joins.
     useEffect(() => {
         if (isMeetingJoined) {
-            // Re-attach the local stream to ensure the video element displays it,
-            // especially after the component re-renders into the meeting view.
             if (localVideoRef.current && streamRef.current) {
                 localVideoRef.current.srcObject = streamRef.current;
             }
@@ -202,7 +218,7 @@ const VideoCallPage: React.FC = () => {
             setupWebRTC().catch(e => {
                 console.error("WebRTC setup failed:", e);
                 setError({ type: 'generic', message: 'Could not initiate the call. Please refresh and try again.' });
-                setIsMeetingJoined(false); // Go back to the lobby on failure
+                setIsMeetingJoined(false);
             });
         }
     }, [isMeetingJoined]);
@@ -218,13 +234,11 @@ const VideoCallPage: React.FC = () => {
     };
 
     const handleJoinMeeting = () => {
-        // Ensure the mic is enabled before joining the call
         if (streamRef.current && !isMicOn) {
             streamRef.current.getAudioTracks().forEach(track => { track.enabled = true; });
             setIsMicOn(true);
         }
         setIsMeetingJoined(true);
-        // The setupWebRTC call is now handled by the useEffect hook above
     };
 
     const handleEndCall = () => {

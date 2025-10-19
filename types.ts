@@ -28,6 +28,7 @@ export interface User {
   hospitalName: string;
   subdomain: string;
   plan: PlanTier;
+  status?: 'pending' | 'approved' | 'rejected';
 }
 
 export interface Availability {
@@ -135,6 +136,12 @@ export interface SiteSettings {
     buttonColor?: string;
     textColor?: string;
     footerColor?: string;
+}
+
+export interface LandingPageSettings {
+    heroTitle: string;
+    heroSubtitle: string;
+    heroImageUrl: string;
 }
 
 export interface Medication {

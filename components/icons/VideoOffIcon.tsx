@@ -14,10 +14,7 @@ export const VideoOffIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => 
         {...props}
     >
         <path d="M16 16v-3.27l4 2.53V8.7l-4 2.53V8l-6.73 4.21"></path>
-        <path d="M2 12.27 8.73 8 13 11"></path>
-        <path d="m2 8 6 4 6-4"></path>
-        <path d="m16 8 6-4-6 4"></path>
-        <path d="m2 16 6-4 6 4"></path>
-        <path d="m16 16 6 4-6-4"></path>
+        <path d="M2 16.27V7.73c0-1.1.9-2 2-2h8.52"></path>
+        <line x1="2" y1="2" x2="22" y2="22"></line>
     </svg>
 );

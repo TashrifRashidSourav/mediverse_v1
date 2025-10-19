@@ -19,24 +19,32 @@ const LoginPage: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      // Sign in with Firebase Auth (v8 style)
       const userCredential = await auth.signInWithEmailAndPassword(email, password);
       const user = userCredential.user!;
-
-      // Fetch user profile from Firestore to get the subdomain (v8 style)
       const userDocRef = db.collection('users').doc(user.uid);
       const userDoc = await userDocRef.get();
 
       if (userDoc.exists) {
         const userData = userDoc.data() as User;
-        // Save non-sensitive part of profile to localStorage for easy access in header/dashboard
-        localStorage.setItem('userProfile', JSON.stringify({ uid: user.uid, subdomain: userData.subdomain, hospitalName: userData.hospitalName }));
-        navigate(`/${userData.subdomain}/dashboard`);
+
+        // With auto-approval, we just need to log the user in if their profile exists.
+        if (userData.status === 'rejected') {
+            await auth.signOut();
+            setError('Your account registration has been rejected. Please contact support.');
+        } else {
+             localStorage.setItem('userProfile', JSON.stringify({ 
+              uid: user.uid, 
+              subdomain: userData.subdomain, 
+              hospitalName: userData.hospitalName,
+              status: userData.status || 'approved'
+            }));
+            navigate(`/${userData.subdomain}/dashboard`);
+        }
       } else {
-        throw new Error("User profile not found.");
+        throw new Error("Hospital admin profile not found.");
       }
     } catch (err: any) {
-      setError('Invalid email or password.');
+      setError(err.message || 'Invalid email or password.');
       console.error(err);
     } finally {
       setIsSubmitting(false);
