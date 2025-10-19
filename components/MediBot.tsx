@@ -19,12 +19,9 @@ const MediBot: React.FC = () => {
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        const apiKey = process.env.API_KEY;
-        if (apiKey) {
-            setAi(new GoogleGenAI({ apiKey }));
-        } else {
-            setError('API key is not configured.');
-        }
+        // As requested, using the provided API key directly to ensure functionality.
+        const apiKey = "AIzaSyDw5kuULKWXi8hDr_BhQyEUfZbVC_S7gcE";
+        setAi(new GoogleGenAI({ apiKey }));
     }, []);
 
     const scrollToBottom = () => {
@@ -61,9 +58,14 @@ const MediBot: React.FC = () => {
             const modelMessage: Message = { role: 'model', text: response.text };
             setMessages(prev => [...prev, modelMessage]);
 
-        } catch (err) {
+        } catch (err: any) {
             console.error("MediBot Error:", err);
-            setError('Sorry, something went wrong. Please try again.');
+            const errorMessage = err.toString();
+            if (errorMessage.includes("API_KEY_INVALID")) {
+                setError('MediBot is offline: The provided API key is invalid. Please check the configuration.');
+            } else {
+                setError('Sorry, something went wrong. Please try again.');
+            }
         } finally {
             setIsLoading(false);
         }
@@ -129,9 +131,9 @@ const MediBot: React.FC = () => {
                             onKeyPress={(e) => e.key === 'Enter' && handleSend()}
                             placeholder="Ask a medical question..."
                             className="flex-grow px-4 py-2 border border-slate-300 rounded-full focus:ring-2 focus:ring-primary-300 focus:border-primary-500 transition"
-                            disabled={isLoading}
+                            disabled={isLoading || !ai}
                         />
-                        <button onClick={handleSend} disabled={isLoading || !input.trim()} className="bg-primary text-white rounded-full w-10 h-10 flex-shrink-0 flex items-center justify-center disabled:bg-primary-300">
+                        <button onClick={handleSend} disabled={isLoading || !input.trim() || !ai} className="bg-primary text-white rounded-full w-10 h-10 flex-shrink-0 flex items-center justify-center disabled:bg-primary-300">
                             <SendIcon className="h-5 w-5" />
                         </button>
                     </div>
