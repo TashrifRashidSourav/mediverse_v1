@@ -27,21 +27,30 @@ const LoginPage: React.FC = () => {
       if (userDoc.exists) {
         const userData = userDoc.data() as User;
 
-        // With auto-approval, we just need to log the user in if their profile exists.
-        if (userData.status === 'rejected') {
-            await auth.signOut();
-            setError('Your account registration has been rejected. Please contact support.');
-        } else {
-             localStorage.setItem('userProfile', JSON.stringify({ 
-              uid: user.uid, 
-              subdomain: userData.subdomain, 
-              hospitalName: userData.hospitalName,
-              status: userData.status || 'approved'
-            }));
-            navigate(`/${userData.subdomain}/dashboard`);
+        if (userData.status === 'pending') {
+          await auth.signOut();
+          navigate('/pending-approval');
+          return;
         }
+
+        if (userData.status === 'rejected') {
+          throw new Error("Your registration has been rejected. Please contact support.");
+        }
+
+        if (userData.status === 'approved' || !userData.status) { // Allow login if status is approved or not set (for older accounts)
+          localStorage.setItem('userProfile', JSON.stringify({ 
+            uid: user.uid, 
+            subdomain: userData.subdomain, 
+            hospitalName: userData.hospitalName,
+            status: userData.status || 'approved' 
+          }));
+          navigate(`/${userData.subdomain}/dashboard`);
+        } else {
+          throw new Error("Invalid account status.");
+        }
+
       } else {
-        throw new Error("Hospital admin profile not found.");
+        throw new Error("User profile not found.");
       }
     } catch (err: any) {
       setError(err.message || 'Invalid email or password.');

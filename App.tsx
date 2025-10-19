@@ -28,6 +28,9 @@ import BookAppointmentPage from './pages/patient-portal/BookAppointmentPage';
 import VideoCallPage from './pages/VideoCallPage';
 import AuthenticatedRoute from './components/AuthenticatedRoute';
 import PendingApprovalPage from './pages/PendingApprovalPage';
+import PaymentSuccessPage from './pages/PaymentSuccessPage';
+import PaymentFailPage from './pages/PaymentFailPage';
+import PaymentCancelPage from './pages/PaymentCancelPage';
 
 // Doctor Portal Imports
 import DoctorLoginPage from './pages/doctor-portal/DoctorLoginPage';
@@ -50,6 +53,9 @@ const App: React.FC = () => {
       <Route path="/signup" element={<SignUpPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/pending-approval" element={<PendingApprovalPage />} />
+      <Route path="/payment/success" element={<PaymentSuccessPage />} />
+      <Route path="/payment/fail" element={<PaymentFailPage />} />
+      <Route path="/payment/cancel" element={<PaymentCancelPage />} />
 
 
       {/* Super Admin Routes */}
@@ -133,7 +139,7 @@ const App: React.FC = () => {
 
 const HospitalSitePageWrapper = () => {
     const { subdomain } = useParams<{ subdomain: string }>();
-    const reservedPaths = ['signup', 'login', 'patient', 'doctor-portal', 'book-appointment', 'meet', 'pending-approval', 'super-admin'];
+    const reservedPaths = ['signup', 'login', 'patient', 'doctor-portal', 'book-appointment', 'meet', 'pending-approval', 'super-admin', 'payment'];
 
     if (subdomain && reservedPaths.includes(subdomain)) {
         return <NotFoundPage />;
