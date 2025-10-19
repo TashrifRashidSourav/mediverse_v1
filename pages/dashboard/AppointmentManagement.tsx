@@ -7,6 +7,7 @@ import { CheckCircleIcon } from '../../components/icons/CheckCircleIcon';
 import { XCircleIcon } from '../../components/icons/XCircleIcon';
 import PermissionGuide from '../../components/dashboard/PermissionGuide';
 import { XIcon } from '../../components/icons/XIcon';
+import { VideoCameraIcon } from '../../components/icons/VideoCameraIcon';
 
 const PAGE_SIZE = 15;
 
@@ -143,10 +144,16 @@ const AppointmentManagement: React.FC = () => {
     const handleConfirm = async (serialNumber: number) => {
         if (!hospitalId || !selectedAppointment) return;
         try {
-            await db.collection('users').doc(hospitalId).collection('appointments').doc(selectedAppointment.id).update({
+            const updateData: { status: AppointmentStatus; serialNumber: number; meetingLink?: string } = {
                 status: AppointmentStatus.Confirmed,
                 serialNumber: serialNumber,
-            });
+            };
+
+            if (selectedAppointment.appointmentType === 'Online') {
+                updateData.meetingLink = `/meet/${hospitalId}/${selectedAppointment.id}`;
+            }
+
+            await db.collection('users').doc(hospitalId).collection('appointments').doc(selectedAppointment.id).update(updateData);
             fetchAppointments('first');
             setIsConfirmModalOpen(false);
             setSelectedAppointment(null);
@@ -199,6 +206,7 @@ const AppointmentManagement: React.FC = () => {
                                 <th className="p-4 font-semibold text-slate-600">Patient</th>
                                 <th className="p-4 font-semibold text-slate-600">Doctor</th>
                                 <th className="p-4 font-semibold text-slate-600">Date & Time</th>
+                                <th className="p-4 font-semibold text-slate-600">Type</th>
                                 <th className="p-4 font-semibold text-slate-600">Status</th>
                                 <th className="p-4 font-semibold text-slate-600">Serial No.</th>
                                 <th className="p-4 font-semibold text-slate-600 text-center">Actions</th>
@@ -206,15 +214,25 @@ const AppointmentManagement: React.FC = () => {
                         </thead>
                         <tbody>
                             {isLoading ? (
-                                <tr><td colSpan={6} className="text-center p-8 text-slate-500">Loading appointments...</td></tr>
+                                <tr><td colSpan={7} className="text-center p-8 text-slate-500">Loading appointments...</td></tr>
                             ) : appointments.length === 0 ? (
-                                <tr><td colSpan={6} className="text-center p-8 text-slate-500">No appointments found.</td></tr>
+                                <tr><td colSpan={7} className="text-center p-8 text-slate-500">No appointments found.</td></tr>
                             ) : (
                                 appointments.map(app => (
                                     <tr key={app.id} className="border-t border-slate-200">
                                         <td className="p-4 font-semibold text-slate-800">{app.patientName}</td>
                                         <td className="p-4 text-slate-700">{app.doctorName}</td>
                                         <td className="p-4 text-slate-700">{new Date(app.date).toLocaleDateString()} at {app.time}</td>
+                                        <td className="p-4">
+                                            {app.appointmentType === 'Online' ? (
+                                                <span className="inline-flex items-center gap-1.5 text-xs font-semibold bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                                                    <VideoCameraIcon className="h-4 w-4" />
+                                                    Online
+                                                </span>
+                                            ) : (
+                                                <span className="text-slate-700">In-Person</span>
+                                            )}
+                                        </td>
                                         <td className="p-4">
                                             <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(app.status)}`}>{app.status}</span>
                                         </td>

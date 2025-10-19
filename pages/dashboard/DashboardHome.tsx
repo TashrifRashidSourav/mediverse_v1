@@ -26,7 +26,7 @@ const DashboardHome: React.FC = () => {
             <StatCard title="Total Doctors" value="12" icon={<StethoscopeIcon className="h-6 w-6 text-white"/>} color="bg-blue-500" />
             <StatCard title="Total Patients" value="348" icon={<UsersIcon className="h-6 w-6 text-white"/>} color="bg-green-500" />
             <StatCard title="Appointments Today" value="27" icon={<CalendarIcon className="h-6 w-6 text-white"/>} color="bg-amber-500" />
-            <StatCard title="Revenue (This Month)" value="2506700 BDT" icon={<BillingIcon className="h-6 w-6 text-white"/>} color="bg-primary-500" />
+            <StatCard title="Revenue (This Month)" value="$45,230" icon={<BillingIcon className="h-6 w-6 text-white"/>} color="bg-primary-500" />
         </div>
 
         <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -36,21 +36,21 @@ const DashboardHome: React.FC = () => {
                 <ul className="space-y-4">
                     <li className="flex justify-between items-center">
                         <div>
-                            <p className="font-semibold text-slate-700">Md. Rakib Hossain</p>
+                            <p className="font-semibold text-slate-700">John Doe with Dr. Smith</p>
                             <p className="text-sm text-slate-500">10:30 AM - Cardiology</p>
                         </div>
                         <span className="text-sm font-medium text-slate-600">In 30 mins</span>
                     </li>
                     <li className="flex justify-between items-center">
                         <div>
-                            <p className="font-semibold text-slate-700">Sakib Mahmud</p>
+                            <p className="font-semibold text-slate-700">Jane Roe with Dr. White</p>
                             <p className="text-sm text-slate-500">11:00 AM - Pediatrics</p>
                         </div>
                         <span className="text-sm font-medium text-slate-600">In 1 hour</span>
                     </li>
                      <li className="flex justify-between items-center">
                         <div>
-                            <p className="font-semibold text-slate-700">Borhan Uddin</p>
+                            <p className="font-semibold text-slate-700">Peter Jones with Dr. Brown</p>
                             <p className="text-sm text-slate-500">02:00 PM - Neurology</p>
                         </div>
                         <span className="text-sm font-medium text-slate-600">Today</span>
@@ -64,21 +64,21 @@ const DashboardHome: React.FC = () => {
                 <ul className="space-y-4">
                     <li className="flex justify-between items-center">
                         <div>
-                            <p className="font-semibold text-slate-700">Mahmud Hossain</p>
+                            <p className="font-semibold text-slate-700">Emily Clark</p>
                             <p className="text-sm text-slate-500">Admitted to Room 302</p>
                         </div>
                         <span className="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded-full">Admitted</span>
                     </li>
                     <li className="flex justify-between items-center">
                         <div>
-                            <p className="font-semibold text-slate-700">Muntasir mahid</p>
+                            <p className="font-semibold text-slate-700">Michael Brown</p>
                             <p className="text-sm text-slate-500">Discharged from Room 104</p>
                         </div>
                         <span className="px-2 py-1 text-xs font-semibold text-slate-800 bg-slate-200 rounded-full">Discharged</span>
                     </li>
                      <li className="flex justify-between items-center">
                         <div>
-                            <p className="font-semibold text-slate-700">Ramisa Ahmaed</p>
+                            <p className="font-semibold text-slate-700">Sarah Wilson</p>
                             <p className="text-sm text-slate-500">Admitted to ER</p>
                         </div>
                         <span className="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded-full">Admitted</span>
