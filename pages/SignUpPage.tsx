@@ -5,6 +5,7 @@ import { PLANS } from "../constants";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { auth, db } from "../firebase";
+import PaymentPopup from "../components/PaymentPopup"; // Import the new payment popup
 
 const SignUpPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -23,8 +24,8 @@ const SignUpPage: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submissionSuccess, setSubmissionSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [isPaymentPopupOpen, setIsPaymentPopupOpen] = useState(false);
 
   useEffect(() => {
     const planTier = searchParams.get("plan") as PlanTier;
@@ -54,6 +55,7 @@ const SignUpPage: React.FC = () => {
     }
   };
 
+  // This function is called when the user clicks the "Proceed to Pay" button
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (
@@ -74,56 +76,73 @@ const SignUpPage: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      // Step 1: Ensure subdomain is unique BEFORE creating a user
+      // Step 1: Ensure subdomain is unique BEFORE showing payment popup
       const existing = await db
         .collection("users")
         .where("subdomain", "==", formData.subdomain)
         .get();
 
       if (!existing.empty) {
-        throw new Error("subdomain-exists");
-      }
-
-      // Step 2: Create user if subdomain is available
-      const userCredential = await auth.createUserWithEmailAndPassword(
-        formData.email,
-        formData.password
-      );
-      const createdUser = userCredential.user;
-      if (!createdUser) {
-        throw new Error("User creation failed unexpectedly.");
-      }
-
-      // Step 3: Save profile in Firestore with 'approved' status.
-      const newUserProfile: User = {
-        uid: createdUser.uid,
-        email: formData.email,
-        hospitalName: formData.hospitalName,
-        subdomain: formData.subdomain,
-        plan: plan!.tier,
-        status: 'approved', // Auto-approved
-      };
-
-      await db.collection("users").doc(createdUser.uid).set(newUserProfile);
-      
-      // We don't want the user to be auto-logged-in
-      await auth.signOut();
-
-      setSubmissionSuccess(true);
-    } catch (err: any) {
-      console.error("[Signup Error]", err);
-      // Step 4: User feedback
-      if (err.message === "subdomain-exists") {
-        setError(
+        throw new Error(
           "This website URL (subdomain) is already taken. Please choose another."
         );
-      } else if (err.code === "auth/email-already-in-use") {
-        setError("An account with this email already exists.");
-      } else {
-        setError("Failed to create account. Please try again.");
       }
+      
+      // Step 2: Open the payment popup instead of redirecting
+      setIsPaymentPopupOpen(true);
+
+    } catch (err: any)
+    {
+      console.error("[Signup Prerequisite Error]", err);
+      setError(err.message || "An unexpected error occurred.");
     } finally {
-      setIsSubmitting(false);
+        setIsSubmitting(false);
+    }
+  };
+
+  // This function is called by the popup after the fake payment is "successful"
+  const handlePaymentSuccess = async () => {
+    setIsSubmitting(true); // Show loading indicator on the main page as well
+    setError('');
+
+    if (!plan) {
+        setError("Plan information is missing.");
+        setIsSubmitting(false);
+        return;
+    }
+
+    try {
+        const userCredential = await auth.createUserWithEmailAndPassword(
+            formData.email,
+            formData.password
+        );
+        const createdUser = userCredential.user;
+        if (!createdUser) throw new Error("User creation failed.");
+
+        const newUserProfile: User = {
+            uid: createdUser.uid,
+            email: formData.email,
+            hospitalName: formData.hospitalName,
+            subdomain: formData.subdomain,
+            plan: plan.tier,
+            status: 'pending',
+        };
+        await db.collection("users").doc(createdUser.uid).set(newUserProfile);
+        await auth.signOut(); // Ensure user is not auto-logged in
+        
+        // Redirect to login page after successful creation
+        navigate('/login');
+
+    } catch (err: any) {
+        console.error("[Account Creation Error]", err);
+        if (err.code === 'auth/email-already-in-use') {
+             setError("This email is already registered. If this was a mistake, please contact support.");
+        } else {
+            setError("Failed to create your account. Please contact support.");
+        }
+    } finally {
+        setIsSubmitting(false);
+        setIsPaymentPopupOpen(false);
     }
   };
 
@@ -136,28 +155,13 @@ const SignUpPage: React.FC = () => {
     );
 
   return (
+    <>
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800 flex flex-col">
       <Header />
       <main className="flex-grow flex items-center justify-center py-12 md:py-20 px-4">
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl">
           <div className="p-8 md:p-12">
-            {submissionSuccess ? (
-              <div className="text-center py-12">
-                <h2 className="text-3xl font-bold text-primary mb-4">
-                  Account Created Successfully!
-                </h2>
-                <p className="text-slate-600 mb-6">
-                  Your hospital account is ready. You can now log in to your dashboard and start setting up your website.
-                </p>
-                <Link
-                  to="/login"
-                  className="mt-8 w-full max-w-xs mx-auto block text-center bg-primary text-white font-bold py-3 px-6 rounded-lg hover:bg-primary-700 transition-colors"
-                >
-                  Go to Login Page
-                </Link>
-              </div>
-            ) : (
-              <>
+            
                 <h2 className="text-3xl font-bold text-slate-900">
                   Create Your Hospital Account
                 </h2>
@@ -264,6 +268,18 @@ const SignUpPage: React.FC = () => {
                     </div>
                   </div>
 
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <label htmlFor="location" className="font-semibold text-slate-700 block mb-1.5">Location (City, Country)</label>
+                        <input type="text" id="location" name="location" value={formData.location} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 focus:border-primary-500 transition" />
+                    </div>
+                     <div>
+                        <label htmlFor="phone" className="font-semibold text-slate-700 block mb-1.5">Phone Number</label>
+                        <input type="tel" id="phone" name="phone" value={formData.phone} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 focus:border-primary-500 transition" />
+                      </div>
+                  </div>
+
+
                   {error && (
                     <p className="text-red-600 text-sm mt-2">{error}</p>
                   )}
@@ -274,17 +290,22 @@ const SignUpPage: React.FC = () => {
                     className="w-full bg-primary text-white font-bold py-3 px-6 rounded-lg hover:bg-primary-700 transition-colors disabled:bg-primary-300 disabled:cursor-not-allowed flex items-center justify-center mt-6"
                   >
                     {isSubmitting
-                      ? "Creating Account..."
-                      : `Create Account`}
+                      ? "Validating..."
+                      : `Proceed to Pay BDT ${plan.price}`}
                   </button>
                 </form>
-              </>
-            )}
           </div>
         </div>
       </main>
       <Footer />
     </div>
+    <PaymentPopup
+        isOpen={isPaymentPopupOpen}
+        onClose={() => setIsPaymentPopupOpen(false)}
+        plan={plan}
+        onPaymentSuccess={handlePaymentSuccess}
+    />
+    </>
   );
 };
 

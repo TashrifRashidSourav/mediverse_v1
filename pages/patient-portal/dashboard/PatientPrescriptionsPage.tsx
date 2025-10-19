@@ -25,22 +25,42 @@ const PatientPrescriptionsPage: React.FC = () => {
         setIsLoading(true);
         setError('');
         try {
-            // Use a more efficient collectionGroup query, enabled by the new security rules.
-            const snapshot = await db.collectionGroup('prescriptions')
-                .where('authUid', '==', currentUser.uid)
-                .orderBy('date', 'desc')
-                .get();
+            // Firestore collection group queries require a specific index. 
+            // To avoid manual index creation for this demo, we are fetching all hospitals
+            // and then querying each one for the patient's prescriptions.
+            // WARNING: This approach is NOT scalable for a production application with many hospitals.
+            // The recommended production solution is to create the single-field index in Firestore
+            // as suggested by the error message, and use the more efficient collectionGroup query:
+            // const snapshot = await db.collectionGroup('prescriptions').where('authUid', '==', currentUser.uid).get();
 
-            const allPrescriptions: Prescription[] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Prescription));
+            // 1. Fetch all hospitals
+            const hospitalsSnapshot = await db.collection('users').get();
+            const hospitalIds = hospitalsSnapshot.docs.map(doc => doc.id);
+
+            // 2. Create a query promise for each hospital
+            const prescriptionPromises = hospitalIds.map(hospitalId => 
+                db.collection('users').doc(hospitalId)
+                  .collection('prescriptions')
+                  .where('authUid', '==', currentUser.uid)
+                  .get()
+            );
+
+            // 3. Execute all queries and flatten the results
+            const prescriptionSnapshots = await Promise.all(prescriptionPromises);
+            const allPrescriptions: Prescription[] = [];
+            prescriptionSnapshots.forEach(snapshot => {
+                snapshot.forEach(doc => {
+                    allPrescriptions.push({ id: doc.id, ...doc.data() } as Prescription);
+                });
+            });
+
+            // 4. Sort and set state
+            allPrescriptions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
             setPrescriptions(allPrescriptions);
 
-        } catch (err: any) {
+        } catch (err) {
             console.error(err);
-            if (err.code === 'failed-precondition') {
-                setError('Query requires a database index. Please check the browser console for a link to create it, then refresh the page.');
-            } else {
-                setError('Failed to fetch prescriptions. Please ensure your Firestore security rules have been updated.');
-            }
+            setError('Failed to fetch prescriptions. Please ensure your Firestore security rules allow reading the "users" collection.');
         } finally {
             setIsLoading(false);
         }

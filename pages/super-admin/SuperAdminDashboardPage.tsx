@@ -8,11 +8,13 @@ import { BillingIcon } from '../../components/icons/BillingIcon';
 import { GlobeIcon } from '../../components/icons/GlobeIcon';
 import { PLANS as defaultPlans } from '../../constants';
 
-type Tab = 'packages' | 'settings';
+type Tab = 'requests' | 'packages' | 'settings';
 
 const SuperAdminDashboardPage: React.FC = () => {
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState<Tab>('packages');
+    const [activeTab, setActiveTab] = useState<Tab>('requests');
+    const [requests, setRequests] = useState<User[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
     // State for package management
     const [plans, setPlans] = useState<Plan[]>([]);
@@ -25,6 +27,17 @@ const SuperAdminDashboardPage: React.FC = () => {
         heroImageUrl: '',
     });
      const [isSettingsLoading, setIsSettingsLoading] = useState(false);
+
+    const fetchRequests = useCallback(async () => {
+        setIsLoading(true);
+        try {
+            const snapshot = await db.collection('users').where('status', '==', 'pending').get();
+            setRequests(snapshot.docs.map(doc => ({ ...doc.data(), uid: doc.id } as User)));
+        } catch (error) {
+            console.error("Error fetching requests:", error);
+        }
+        setIsLoading(false);
+    }, []);
 
     const fetchPlans = useCallback(async () => {
         setIsPlansLoading(true);
@@ -61,9 +74,15 @@ const SuperAdminDashboardPage: React.FC = () => {
     }, []);
 
     useEffect(() => {
+        if (activeTab === 'requests') fetchRequests();
         if (activeTab === 'packages') fetchPlans();
         if (activeTab === 'settings') fetchLandingPageSettings();
-    }, [activeTab, fetchPlans, fetchLandingPageSettings]);
+    }, [activeTab, fetchRequests, fetchPlans, fetchLandingPageSettings]);
+
+    const handleApproval = async (userId: string, status: 'approved' | 'rejected') => {
+        await db.collection('users').doc(userId).update({ status });
+        fetchRequests();
+    };
     
     const handleSavePlans = async () => {
         if(window.confirm("Are you sure you want to save these plan changes? This will affect the public pricing page.")) {
@@ -95,6 +114,7 @@ const SuperAdminDashboardPage: React.FC = () => {
     };
 
     const navItems = [
+        { id: 'requests', name: 'Hospital Requests', icon: UsersIcon },
         { id: 'packages', name: 'Manage Packages', icon: BillingIcon },
         { id: 'settings', name: 'Site Settings', icon: GlobeIcon },
     ];
@@ -135,6 +155,28 @@ const SuperAdminDashboardPage: React.FC = () => {
                     </h1>
                 </header>
                 <div className="flex-grow p-6 overflow-y-auto">
+                    {activeTab === 'requests' && (
+                        <div className="bg-white p-6 rounded-xl shadow-md">
+                            <h2 className="text-xl font-bold mb-4">Pending Approvals</h2>
+                            {isLoading ? <p>Loading requests...</p> : requests.length === 0 ? <p>No pending requests.</p> : (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left">
+                                        <thead><tr className="bg-slate-50">
+                                            <th className="p-3">Hospital Name</th><th className="p-3">Email</th><th className="p-3">Plan</th><th className="p-3">Actions</th>
+                                        </tr></thead>
+                                        <tbody>{requests.map(req => (
+                                            <tr key={req.uid} className="border-b"><td className="p-3">{req.hospitalName}</td><td className="p-3">{req.email}</td><td className="p-3">{req.plan}</td>
+                                                <td className="p-3 flex gap-2">
+                                                    <button onClick={() => handleApproval(req.uid, 'approved')} className="bg-green-500 text-white text-sm font-bold py-1 px-3 rounded-md">Approve</button>
+                                                    <button onClick={() => handleApproval(req.uid, 'rejected')} className="bg-red-500 text-white text-sm font-bold py-1 px-3 rounded-md">Reject</button>
+                                                </td>
+                                            </tr>
+                                        ))}</tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    )}
                      {activeTab === 'packages' && (
                         <div>
                             {isPlansLoading ? <p>Loading plans...</p> :
