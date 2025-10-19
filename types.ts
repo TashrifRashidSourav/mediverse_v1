@@ -99,6 +99,8 @@ export interface Appointment {
     time: string; // HH:mm format
     status: AppointmentStatus;
     serialNumber?: number;
+    appointmentType?: 'Online' | 'In-Person';
+    meetingLink?: string;
 }
 
 export interface ServiceItem {

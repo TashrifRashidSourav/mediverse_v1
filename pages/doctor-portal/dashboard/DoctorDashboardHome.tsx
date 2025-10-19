@@ -6,6 +6,7 @@ import PatientProfileModal from '../../../components/doctor-portal/PatientProfil
 import { CalendarIcon } from '../../../components/icons/CalendarIcon';
 import { ClipboardIcon } from '../../../components/icons/ClipboardIcon';
 import { UserIcon } from '../../../components/icons/UserIcon';
+import { VideoCameraIcon } from '../../../components/icons/VideoCameraIcon';
 
 const DoctorDashboardHome: React.FC = () => {
     const { subdomain } = useParams<{ subdomain: string }>();
@@ -104,15 +105,22 @@ const DoctorDashboardHome: React.FC = () => {
                 <div className="text-sm text-slate-500 mt-1 flex items-center gap-4">
                     <span>Time: <span className="font-semibold text-slate-700">{app.time}</span></span>
                     {app.serialNumber && <span>Serial: <span className="font-bold text-primary-700">#{app.serialNumber}</span></span>}
+                    {app.appointmentType === 'Online' && <span className="font-semibold text-blue-600 flex items-center gap-1"><VideoCameraIcon className="h-4 w-4" /> Online</span>}
                 </div>
             </div>
             <div className="flex-shrink-0 flex items-center gap-2 justify-end">
                 <button onClick={() => handleViewProfile(app.patientId)} className="text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-md flex items-center gap-1.5">
                     <UserIcon className="h-4 w-4" /> Profile
                 </button>
-                <Link to={`/${subdomain}/doctor-portal/dashboard/prescription/${app.patientId}`} className="text-sm font-semibold text-primary-700 bg-primary-100 hover:bg-primary-200 px-3 py-1.5 rounded-md flex items-center gap-1.5">
-                    <ClipboardIcon className="h-4 w-4" /> Prescription
-                </Link>
+                 {app.appointmentType === 'Online' && app.status === 'Confirmed' && app.meetingLink ? (
+                    <Link to={app.meetingLink} className="text-sm font-semibold text-green-700 bg-green-100 hover:bg-green-200 px-3 py-1.5 rounded-md flex items-center gap-1.5">
+                        <VideoCameraIcon className="h-4 w-4" /> Start Meeting
+                    </Link>
+                ) : (
+                    <Link to={`/${subdomain}/doctor-portal/dashboard/prescription/${app.patientId}`} className="text-sm font-semibold text-primary-700 bg-primary-100 hover:bg-primary-200 px-3 py-1.5 rounded-md flex items-center gap-1.5">
+                        <ClipboardIcon className="h-4 w-4" /> Prescription
+                    </Link>
+                )}
             </div>
         </div>
     );

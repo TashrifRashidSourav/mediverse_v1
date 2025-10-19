@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { db, auth } from '../../firebase';
-import { Doctor, User, Patient, Appointment, AppointmentStatus, SiteSettings } from '../../types';
+import { Doctor, User, Patient, Appointment, AppointmentStatus, SiteSettings, PatientStatus } from '../../types';
 import { UserCircleIcon } from '../../components/icons/UserCircleIcon';
 import { BriefcaseIcon } from '../../components/icons/BriefcaseIcon';
 import { DollarSignIcon } from '../../components/icons/DollarSignIcon';
@@ -20,6 +20,7 @@ interface AppointmentBookingModalProps {
 
 const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = ({ isOpen, onClose, doctor, hospital }) => {
     const [patientProfile, setPatientProfile] = useState<Patient | null>(null);
+    const [appointmentType, setAppointmentType] = useState<'In-Person' | 'Online'>('In-Person');
     const [date, setDate] = useState('');
     const [time, setTime] = useState('');
     const [timeSlots, setTimeSlots] = useState<string[]>([]);
@@ -59,7 +60,7 @@ const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = ({ isOpe
                 const endTime = new Date(`${date}T${availableSlot.endTime}`);
                 
                 while (currentTime < endTime) {
-                    slots.push(currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }));
+                    slots.push(currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }));
                     currentTime.setMinutes(currentTime.getMinutes() + 30); // 30-minute slots
                 }
                 setTimeSlots(slots);
@@ -72,7 +73,7 @@ const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = ({ isOpe
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if(!time || !patientProfile) {
-            setError("Please select an available time slot.");
+            setError("Please select an available time slot and ensure your profile is loaded.");
             return;
         }
         setIsSubmitting(true);
@@ -82,12 +83,39 @@ const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = ({ isOpe
             const user = auth.currentUser;
             if(!user) throw new Error("Not logged in.");
 
-            const appointmentTime = new Date(`${date}T${time.replace(/( AM| PM)/, '')}`).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+            // Ensure a local patient record exists for this hospital, create if not.
+            const patientLocalRecordRef = db.collection('users').doc(hospital.uid).collection('patients');
+            const q = patientLocalRecordRef.where('authUid', '==', user.uid).limit(1);
+            const patientSnapshot = await q.get();
+
+            let localPatientId: string;
+
+            if (patientSnapshot.empty) {
+                // No local record exists, create one from the global profile.
+                const newLocalPatientData: Omit<Patient, 'id'> = {
+                    authUid: user.uid,
+                    name: patientProfile.name,
+                    phone: patientProfile.phone,
+                    email: patientProfile.email,
+                    age: patientProfile.age,
+                    gender: patientProfile.gender,
+                    profilePictureUrl: patientProfile.profilePictureUrl || '',
+                    // Default status for a new patient booking an appointment
+                    status: PatientStatus.In_Treatment, 
+                    admittedDate: new Date().toISOString(),
+                };
+                const docRef = await patientLocalRecordRef.add(newLocalPatientData);
+                localPatientId = docRef.id;
+            } else {
+                // Record exists, get its ID.
+                localPatientId = patientSnapshot.docs[0].id;
+            }
 
             const newAppointment: Omit<Appointment, 'id'> = {
                 hospitalId: hospital.uid,
                 hospitalName: hospital.hospitalName,
                 authUid: user.uid,
+                patientId: localPatientId, // Crucial link to local patient record
                 patientName: patientProfile.name,
                 patientDetails: {
                     phone: patientProfile.phone,
@@ -97,8 +125,9 @@ const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = ({ isOpe
                 doctorId: doctor.id,
                 doctorName: doctor.name,
                 date: date,
-                time: appointmentTime,
+                time: time,
                 status: AppointmentStatus.Scheduled,
+                appointmentType: appointmentType,
             };
 
             await db.collection('users').doc(hospital.uid).collection('appointments').add(newAppointment);
@@ -135,6 +164,19 @@ const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = ({ isOpe
                             <div>
                                 <h3 className="font-bold text-lg">{doctor.name}</h3>
                                 <p className="text-slate-600">{doctor.specialization}</p>
+                            </div>
+                             <div>
+                                <label className="font-semibold text-slate-700 block mb-1.5">Appointment Type</label>
+                                <div className="flex gap-4 p-2 bg-slate-100 rounded-lg">
+                                    <label className={`flex-1 text-center py-2 rounded-md cursor-pointer transition-colors ${appointmentType === 'In-Person' ? 'bg-white shadow-sm' : ''}`}>
+                                        <input type="radio" name="appointmentType" value="In-Person" checked={appointmentType === 'In-Person'} onChange={() => setAppointmentType('In-Person')} className="sr-only" />
+                                        In-Person
+                                    </label>
+                                    <label className={`flex-1 text-center py-2 rounded-md cursor-pointer transition-colors ${appointmentType === 'Online' ? 'bg-white shadow-sm' : ''}`}>
+                                        <input type="radio" name="appointmentType" value="Online" checked={appointmentType === 'Online'} onChange={() => setAppointmentType('Online')} className="sr-only" />
+                                        Online
+                                    </label>
+                                </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
