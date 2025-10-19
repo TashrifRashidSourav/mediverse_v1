@@ -123,16 +123,19 @@ const VideoCallPage: React.FC = () => {
 
         if (isDoctor && hospitalId && appointmentId) {
             try {
-                const webrtcRef = db.collection('users').doc(hospitalId).collection('appointments').doc(appointmentId).collection('webrtc');
+                // FIX: Correctly reference subcollections from the document, not the parent collection.
+                const signalingDocRef = db.collection('users').doc(hospitalId).collection('appointments').doc(appointmentId).collection('webrtc').doc('signaling');
+
                 const [signalingDoc, callerCandidates, calleeCandidates] = await Promise.all([
-                    webrtcRef.doc('signaling').get(),
-                    webrtcRef.collection('callerCandidates').get(),
-                    webrtcRef.collection('calleeCandidates').get(),
+                    signalingDocRef.get(),
+                    signalingDocRef.collection('callerCandidates').get(),
+                    signalingDocRef.collection('calleeCandidates').get(),
                 ]);
+
                 const batch = db.batch();
                 callerCandidates.forEach(doc => batch.delete(doc.ref));
                 calleeCandidates.forEach(doc => batch.delete(doc.ref));
-                if(signalingDoc.exists) batch.delete(signalingDoc.ref);
+                if(signalingDoc.exists) batch.delete(signalingDocRef);
                 await batch.commit();
             } catch (e) {
                 console.error("Error cleaning up call data:", e);
@@ -187,6 +190,23 @@ const VideoCallPage: React.FC = () => {
         return () => { cleanup(); };
     }, [hospitalId, appointmentId]);
 
+    // This effect handles setting up the WebRTC connection after the user joins.
+    useEffect(() => {
+        if (isMeetingJoined) {
+            // Re-attach the local stream to ensure the video element displays it,
+            // especially after the component re-renders into the meeting view.
+            if (localVideoRef.current && streamRef.current) {
+                localVideoRef.current.srcObject = streamRef.current;
+            }
+
+            setupWebRTC().catch(e => {
+                console.error("WebRTC setup failed:", e);
+                setError({ type: 'generic', message: 'Could not initiate the call. Please refresh and try again.' });
+                setIsMeetingJoined(false); // Go back to the lobby on failure
+            });
+        }
+    }, [isMeetingJoined]);
+
     const toggleMic = () => {
         streamRef.current?.getAudioTracks().forEach(track => { track.enabled = !isMicOn; });
         setIsMicOn(!isMicOn);
@@ -198,13 +218,13 @@ const VideoCallPage: React.FC = () => {
     };
 
     const handleJoinMeeting = () => {
-        if (!isMicOn) toggleMic();
+        // Ensure the mic is enabled before joining the call
+        if (streamRef.current && !isMicOn) {
+            streamRef.current.getAudioTracks().forEach(track => { track.enabled = true; });
+            setIsMicOn(true);
+        }
         setIsMeetingJoined(true);
-        setupWebRTC().catch(e => {
-            console.error("WebRTC setup failed:", e);
-            setError({ type: 'generic', message: 'Could not initiate the call. Please refresh and try again.' });
-            setIsMeetingJoined(false);
-        });
+        // The setupWebRTC call is now handled by the useEffect hook above
     };
 
     const handleEndCall = () => {
