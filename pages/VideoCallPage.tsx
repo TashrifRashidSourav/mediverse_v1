@@ -8,17 +8,25 @@ import { VideoIcon } from '../components/icons/VideoIcon';
 import { VideoOffIcon } from '../components/icons/VideoOffIcon';
 import { PhoneIcon } from '../components/icons/PhoneIcon';
 import { UserCircleIcon } from '../components/icons/UserCircleIcon';
-import { ShieldExclamationIcon } from '../components/icons/ShieldExclamationIcon'; // New Icon
+import { ShieldExclamationIcon } from '../components/icons/ShieldExclamationIcon';
+import firebase from 'firebase/compat/app';
 
-// A more specific error state for better user feedback
 type ErrorState = {
     type: 'permission' | 'context' | 'not_found' | 'generic' | 'unsupported' | 'in_use' | 'auth';
     message: string;
 };
 
+const servers = {
+    iceServers: [
+        {
+            urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'],
+        },
+    ],
+    iceCandidatePoolSize: 10,
+};
 
 const VideoCallPage: React.FC = () => {
-    const { hospitalId, appointmentId } = useParams<{ hospitalId: string, appointmentId: string }>();
+    const { hospitalId, appointmentId } = useParams<{ hospitalId: string; appointmentId: string }>();
     const navigate = useNavigate();
 
     const [appointment, setAppointment] = useState<Appointment | null>(null);
@@ -27,13 +35,110 @@ const VideoCallPage: React.FC = () => {
     const [isMicOn, setIsMicOn] = useState(true);
     const [isCameraOn, setIsCameraOn] = useState(true);
     const [isMeetingJoined, setIsMeetingJoined] = useState(false);
+    const [remoteUserJoined, setRemoteUserJoined] = useState(false);
 
     const localVideoRef = useRef<HTMLVideoElement>(null);
     const remoteVideoRef = useRef<HTMLVideoElement>(null);
     const streamRef = useRef<MediaStream | null>(null);
+    const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+    const roleRef = useRef<'caller' | 'callee' | null>(null);
 
     const localUser = JSON.parse(localStorage.getItem('doctorProfile') || localStorage.getItem('patientProfile') || 'null');
     const isDoctor = !!localStorage.getItem('doctorProfile');
+
+    const setupWebRTC = async () => {
+        if (!hospitalId || !appointmentId) return;
+
+        peerConnectionRef.current = new RTCPeerConnection(servers);
+        const pc = peerConnectionRef.current;
+        const callDocRef = db.collection('users').doc(hospitalId).collection('appointments').doc(appointmentId).collection('webrtc').doc('signaling');
+        const callerCandidatesCollection = callDocRef.collection('callerCandidates');
+        const calleeCandidatesCollection = callDocRef.collection('calleeCandidates');
+
+        streamRef.current?.getTracks().forEach(track => {
+            pc.addTrack(track, streamRef.current!);
+        });
+
+        pc.ontrack = (event) => {
+            setRemoteUserJoined(true);
+            if (remoteVideoRef.current) {
+                remoteVideoRef.current.srcObject = event.streams[0];
+            }
+        };
+
+        pc.onicecandidate = (event) => {
+            if (event.candidate) {
+                const candidatesCollection = roleRef.current === 'caller' ? callerCandidatesCollection : calleeCandidatesCollection;
+                candidatesCollection.add(event.candidate.toJSON());
+            }
+        };
+
+        await db.runTransaction(async (transaction) => {
+            const callDoc = await transaction.get(callDocRef);
+            if (!callDoc.exists || !callDoc.data()?.offer) {
+                roleRef.current = 'caller';
+                const offerDescription = await pc.createOffer();
+                await pc.setLocalDescription(offerDescription);
+                transaction.set(callDocRef, { offer: { type: offerDescription.type, sdp: offerDescription.sdp } });
+            } else {
+                roleRef.current = 'callee';
+            }
+        });
+
+        if (roleRef.current === 'caller') {
+            callDocRef.onSnapshot(async (snapshot) => {
+                const data = snapshot.data();
+                if (!pc.currentRemoteDescription && data?.answer) {
+                    const answerDescription = new RTCSessionDescription(data.answer);
+                    await pc.setRemoteDescription(answerDescription);
+                }
+            });
+            calleeCandidatesCollection.onSnapshot((snapshot) => {
+                snapshot.docChanges().forEach((change) => {
+                    if (change.type === 'added') pc.addIceCandidate(new RTCIceCandidate(change.doc.data()));
+                });
+            });
+        } else {
+            const callDoc = await callDocRef.get();
+            const offer = callDoc.data()!.offer;
+            await pc.setRemoteDescription(new RTCSessionDescription(offer));
+            const answerDescription = await pc.createAnswer();
+            await pc.setLocalDescription(answerDescription);
+            await callDocRef.update({ answer: { type: answerDescription.type, sdp: answerDescription.sdp } });
+
+            callerCandidatesCollection.onSnapshot((snapshot) => {
+                snapshot.docChanges().forEach((change) => {
+                    if (change.type === 'added') pc.addIceCandidate(new RTCIceCandidate(change.doc.data()));
+                });
+            });
+        }
+    };
+    
+    const cleanup = async () => {
+        streamRef.current?.getTracks().forEach(track => track.stop());
+        if (peerConnectionRef.current) {
+            peerConnectionRef.current.close();
+            peerConnectionRef.current = null;
+        }
+
+        if (isDoctor && hospitalId && appointmentId) {
+            try {
+                const webrtcRef = db.collection('users').doc(hospitalId).collection('appointments').doc(appointmentId).collection('webrtc');
+                const [signalingDoc, callerCandidates, calleeCandidates] = await Promise.all([
+                    webrtcRef.doc('signaling').get(),
+                    webrtcRef.collection('callerCandidates').get(),
+                    webrtcRef.collection('calleeCandidates').get(),
+                ]);
+                const batch = db.batch();
+                callerCandidates.forEach(doc => batch.delete(doc.ref));
+                calleeCandidates.forEach(doc => batch.delete(doc.ref));
+                if(signalingDoc.exists) batch.delete(signalingDoc.ref);
+                await batch.commit();
+            } catch (e) {
+                console.error("Error cleaning up call data:", e);
+            }
+        }
+    };
 
     useEffect(() => {
         const fetchAppointment = async () => {
@@ -44,13 +149,10 @@ const VideoCallPage: React.FC = () => {
             try {
                 const doc = await db.collection('users').doc(hospitalId).collection('appointments').doc(appointmentId).get();
                 if (!doc.exists) throw new Error('Appointment not found.');
-                
                 const appData = doc.data() as Appointment;
-
                 if (!localUser || ((isDoctor && localUser.id !== appData.doctorId) || (!isDoctor && localUser.uid !== appData.authUid))) {
                     throw new Error('You do not have permission to join this meeting.');
                 }
-                
                 setAppointment(appData);
             } catch (err: any) {
                 setError({ type: 'auth', message: err.message || 'Failed to load meeting details.' });
@@ -59,87 +161,56 @@ const VideoCallPage: React.FC = () => {
 
         const checkAndStartMedia = async () => {
             try {
-                // 1. Check for secure context first. This is the most common issue in dev environments.
-                if (!window.isSecureContext) {
-                    throw { type: 'context', message: "Camera and microphone access requires a secure connection (HTTPS). This feature is disabled on insecure (HTTP) pages." };
-                }
-
-                // 2. Check if the browser supports the API at all.
-                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                    throw { type: 'unsupported', message: "Your browser does not support video calls. Please use a modern browser like Chrome or Firefox." };
-                }
-
-                // 3. Check permissions status before prompting.
+                if (!window.isSecureContext) throw { type: 'context', message: "Camera and microphone access requires a secure connection (HTTPS)." };
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw { type: 'unsupported', message: "Your browser does not support video calls." };
+                
                 const cameraPerm = await navigator.permissions.query({ name: 'camera' as PermissionName });
                 const micPerm = await navigator.permissions.query({ name: 'microphone' as PermissionName });
-
-                if (cameraPerm.state === 'denied' || micPerm.state === 'denied') {
-                    throw { type: 'permission', message: 'Camera and microphone access was denied. You must enable it in your browser or device settings to continue.'};
-                }
-
-                // 4. Request media stream.
+                if (cameraPerm.state === 'denied' || micPerm.state === 'denied') throw { type: 'permission', message: 'Camera and microphone access was denied. You must enable it in your browser or device settings.'};
+                
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
                 streamRef.current = stream;
-                if (localVideoRef.current) {
-                    localVideoRef.current.srcObject = stream;
-                }
-                // Mute mic by default in pre-join screen
+                if (localVideoRef.current) localVideoRef.current.srcObject = stream;
                 stream.getAudioTracks().forEach(track => track.enabled = false);
                 setIsMicOn(false);
-
             } catch (err: any) {
                 console.error("Error accessing media devices.", err);
-                if (err.type) { // Handle our custom error objects
-                    setError(err);
-                } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-                     setError({ type: 'permission', message: 'Camera and microphone access was denied. You must enable it in your browser or device settings to continue.' });
-                } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-                     setError({ type: 'not_found', message: 'No camera or microphone found on your device. Please connect a device and refresh.' });
-                } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
-                     setError({ type: 'in_use', message: 'Your camera or microphone might be in use by another application. Please close it and refresh.' });
-                } else {
-                     setError({ type: 'generic', message: err.message || 'Could not access camera or microphone. Please check your device and permissions, then refresh the page.'});
-                }
+                if (err.type) setError(err);
+                else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') setError({ type: 'permission', message: 'Camera and microphone access was denied.' });
+                else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') setError({ type: 'not_found', message: 'No camera or microphone found on your device.' });
+                else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') setError({ type: 'in_use', message: 'Your camera or microphone might be in use by another application.' });
+                else setError({ type: 'generic', message: err.message || 'Could not access camera or microphone.'});
             }
         };
 
         Promise.all([fetchAppointment(), checkAndStartMedia()]).finally(() => setIsLoading(false));
-
-        return () => {
-            streamRef.current?.getTracks().forEach(track => track.stop());
-        };
+        return () => { cleanup(); };
     }, [hospitalId, appointmentId]);
 
     const toggleMic = () => {
-        streamRef.current?.getAudioTracks().forEach(track => {
-            track.enabled = !isMicOn;
-        });
+        streamRef.current?.getAudioTracks().forEach(track => { track.enabled = !isMicOn; });
         setIsMicOn(!isMicOn);
     };
 
     const toggleCamera = () => {
-        streamRef.current?.getVideoTracks().forEach(track => {
-            track.enabled = !isCameraOn;
-        });
+        streamRef.current?.getVideoTracks().forEach(track => { track.enabled = !isCameraOn; });
         setIsCameraOn(!isCameraOn);
     };
 
     const handleJoinMeeting = () => {
-        if (!isMicOn) {
-            toggleMic();
-        }
+        if (!isMicOn) toggleMic();
         setIsMeetingJoined(true);
+        setupWebRTC().catch(e => {
+            console.error("WebRTC setup failed:", e);
+            setError({ type: 'generic', message: 'Could not initiate the call. Please refresh and try again.' });
+            setIsMeetingJoined(false);
+        });
     };
 
     const handleEndCall = () => {
-        streamRef.current?.getTracks().forEach(track => track.stop());
-        if (isDoctor && appointment) {
-             // FIX: The `subdomain` is not a URL parameter on this page.
-             // It's available in the doctor's profile stored in localStorage (`localUser`).
-             navigate(`/${localUser.subdomain}/doctor-portal/dashboard`);
-        } else {
-            navigate('/patient/dashboard/appointments');
-        }
+        cleanup();
+        if (isDoctor && appointment) navigate(`/${localUser.subdomain}/doctor-portal/dashboard`);
+        else navigate('/patient/dashboard/appointments');
     };
     
     const otherParticipantName = isDoctor ? appointment?.patientName : appointment?.doctorName;
@@ -152,48 +223,22 @@ const VideoCallPage: React.FC = () => {
 
     const renderError = () => {
         if (!error) return null;
-
-        let title = "An Error Occurred";
-        let subtext = "Please try refreshing the page.";
-        let icon = <VideoOffIcon className="h-6 w-6 text-red-400" />;
-
+        let title = "An Error Occurred", subtext = "Please try refreshing the page.", icon = <VideoOffIcon className="h-6 w-6 text-red-400" />;
         switch(error.type) {
-            case 'permission':
-                title = "Permissions Required";
-                subtext = "After enabling permissions in your browser or system settings, please refresh the page.";
-                break;
-            case 'context':
-                title = "Secure Connection Required";
-                subtext = "Video calls can only be used on a secure (HTTPS) connection. Please check the page URL.";
-                icon = <ShieldExclamationIcon className="h-8 w-8 text-amber-400" />;
-                break;
-            case 'unsupported':
-                title = "Browser Not Supported";
-                subtext = "Please try a different browser like the latest version of Chrome or Firefox.";
-                break;
-            case 'not_found':
-                title = "Device Not Found";
-                subtext = "Please ensure your camera and microphone are connected properly.";
-                break;
-            case 'in_use':
-                title = "Device In Use";
-                subtext = "Another application might be using your camera or microphone.";
-                break;
-             case 'auth':
-                title = "Access Denied";
-                subtext = "You may not have permission to join this meeting.";
-                break;
+            case 'permission': title = "Permissions Required"; subtext = "After enabling permissions, please refresh the page."; break;
+            case 'context': title = "Secure Connection Required"; subtext = "Video calls require a secure (HTTPS) connection."; icon = <ShieldExclamationIcon className="h-8 w-8 text-amber-400" />; break;
+            case 'unsupported': title = "Browser Not Supported"; subtext = "Please use a modern browser like Chrome or Firefox."; break;
+            case 'not_found': title = "Device Not Found"; subtext = "Please ensure your camera/microphone are connected."; break;
+            case 'in_use': title = "Device In Use"; subtext = "Another application may be using your camera/microphone."; break;
+            case 'auth': title = "Access Denied"; subtext = "You may not have permission to join this meeting."; break;
         }
-
         return (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-6 bg-gray-900">
-                <div className={`w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mb-4`}>
-                    {icon}
-                </div>
-                 <h2 className="text-xl font-bold text-white mb-2">{title}</h2>
-                 <p className={`${error.type === 'context' ? 'text-amber-300' : 'text-red-400'} font-semibold max-w-md`}>{error.message}</p>
-                 <p className="text-gray-400 text-sm mt-2 max-w-md">{subtext}</p>
-                 <button onClick={() => navigate('/')} className="mt-6 bg-gray-700 hover:bg-gray-600 text-white font-semibold px-6 py-2 rounded-lg transition-colors">Go Home</button>
+                <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mb-4">{icon}</div>
+                <h2 className="text-xl font-bold text-white mb-2">{title}</h2>
+                <p className={`${error.type === 'context' ? 'text-amber-300' : 'text-red-400'} font-semibold max-w-md`}>{error.message}</p>
+                <p className="text-gray-400 text-sm mt-2 max-w-md">{subtext}</p>
+                <button onClick={() => navigate('/')} className="mt-6 bg-gray-700 hover:bg-gray-600 text-white font-semibold px-6 py-2 rounded-lg transition-colors">Go Home</button>
             </div>
         );
     };
@@ -205,56 +250,38 @@ const VideoCallPage: React.FC = () => {
                 <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover transform -scale-x-100"></video>
                 {!isCameraOn && (
                     <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
-                        <UserCircleIcon className="h-24 w-24 text-gray-600"/>
-                        <p className="absolute bottom-4 text-sm text-white">Camera is off</p>
+                        <UserCircleIcon className="h-24 w-24 text-gray-600"/><p className="absolute bottom-4 text-sm text-white">Camera is off</p>
                     </div>
                 )}
                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-3">
-                    <ControlButton onClick={toggleMic} className={isMicOn ? 'bg-white/20 hover:bg-white/30' : 'bg-red-600 hover:bg-red-500'}>
-                        {isMicOn ? <MicIcon className="h-6 w-6"/> : <MicOffIcon className="h-6 w-6"/>}
-                    </ControlButton>
-                    <ControlButton onClick={toggleCamera} className={isCameraOn ? 'bg-white/20 hover:bg-white/30' : 'bg-red-600 hover:bg-red-500'}>
-                        {isCameraOn ? <VideoIcon className="h-6 w-6"/> : <VideoOffIcon className="h-6 w-6"/>}
-                    </ControlButton>
+                    <ControlButton onClick={toggleMic} className={isMicOn ? 'bg-white/20 hover:bg-white/30' : 'bg-red-600 hover:bg-red-500'}>{isMicOn ? <MicIcon className="h-6 w-6"/> : <MicOffIcon className="h-6 w-6"/>}</ControlButton>
+                    <ControlButton onClick={toggleCamera} className={isCameraOn ? 'bg-white/20 hover:bg-white/30' : 'bg-red-600 hover:bg-red-500'}>{isCameraOn ? <VideoIcon className="h-6 w-6"/> : <VideoOffIcon className="h-6 w-6"/>}</ControlButton>
                 </div>
             </div>
-            <button onClick={handleJoinMeeting} className="bg-primary mt-4 px-8 py-3 rounded-full font-semibold hover:bg-primary-700 text-lg transition-transform hover:scale-105">
-                Join Now
-            </button>
+            <button onClick={handleJoinMeeting} className="bg-primary mt-4 px-8 py-3 rounded-full font-semibold hover:bg-primary-700 text-lg transition-transform hover:scale-105">Join Now</button>
         </div>
     );
 
     const renderMeeting = () => (
         <>
             <div className="flex-1 bg-gray-800 relative flex items-center justify-center overflow-hidden">
-               <video ref={remoteVideoRef} autoPlay playsInline className="absolute w-full h-full object-cover" />
-               <div className="text-center z-10 p-4 bg-black/30 rounded-lg">
-                    <UserCircleIcon className="h-32 w-32 text-gray-600" />
-                    <p className="mt-4 text-xl text-gray-400">{otherParticipantName || 'Waiting for user...'}</p>
-                    <p className="text-sm text-gray-500">(Other participant's video will appear here)</p>
-               </div>
+               <video ref={remoteVideoRef} autoPlay playsInline className={`absolute w-full h-full object-cover transition-opacity duration-500 ${remoteUserJoined ? 'opacity-100' : 'opacity-0'}`} />
+               {!remoteUserJoined && (
+                   <div className="text-center z-10 p-4 bg-black/30 rounded-lg">
+                        <UserCircleIcon className="h-32 w-32 text-gray-600" />
+                        <p className="mt-4 text-xl text-gray-400">Waiting for {otherParticipantName || 'other participant'}...</p>
+                   </div>
+               )}
             </div>
-
             <div className="absolute top-4 right-4 w-32 h-24 md:w-48 md:h-36 bg-black rounded-lg shadow-lg overflow-hidden border-2 border-gray-700">
                 <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover transform -scale-x-100"></video>
-                {!isCameraOn && (
-                    <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
-                        <VideoOffIcon className="h-8 w-8 text-white"/>
-                    </div>
-                )}
+                {!isCameraOn && <div className="absolute inset-0 bg-black/70 flex items-center justify-center"><VideoOffIcon className="h-8 w-8 text-white"/></div>}
             </div>
-
             <div className="absolute bottom-0 left-0 right-0 p-4 flex justify-center">
                 <div className="bg-gray-800/80 backdrop-blur-sm p-3 rounded-full flex items-center gap-4">
-                    <ControlButton onClick={toggleMic} className={isMicOn ? 'bg-gray-600 hover:bg-gray-500' : 'bg-red-600 hover:bg-red-500'}>
-                        {isMicOn ? <MicIcon className="h-6 w-6"/> : <MicOffIcon className="h-6 w-6"/>}
-                    </ControlButton>
-                    <ControlButton onClick={toggleCamera} className={isCameraOn ? 'bg-gray-600 hover:bg-gray-500' : 'bg-red-600 hover:bg-red-500'}>
-                        {isCameraOn ? <VideoIcon className="h-6 w-6"/> : <VideoOffIcon className="h-6 w-6"/>}
-                    </ControlButton>
-                    <ControlButton onClick={handleEndCall} className="bg-red-600 hover:bg-red-500 transform rotate-[135deg]">
-                        <PhoneIcon className="h-6 w-6"/>
-                    </ControlButton>
+                    <ControlButton onClick={toggleMic} className={isMicOn ? 'bg-gray-600 hover:bg-gray-500' : 'bg-red-600 hover:bg-red-500'}>{isMicOn ? <MicIcon className="h-6 w-6"/> : <MicOffIcon className="h-6 w-6"/>}</ControlButton>
+                    <ControlButton onClick={toggleCamera} className={isCameraOn ? 'bg-gray-600 hover:bg-gray-500' : 'bg-red-600 hover:bg-red-500'}>{isCameraOn ? <VideoIcon className="h-6 w-6"/> : <VideoOffIcon className="h-6 w-6"/>}</ControlButton>
+                    <ControlButton onClick={handleEndCall} className="bg-red-600 hover:bg-red-500 transform rotate-[135deg]"><PhoneIcon className="h-6 w-6"/></ControlButton>
                 </div>
             </div>
         </>
