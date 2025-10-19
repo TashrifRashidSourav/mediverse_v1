@@ -19,12 +19,9 @@ const MediBot: React.FC = () => {
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        const apiKey = process.env.API_KEY;
-        if (apiKey) {
-            setAi(new GoogleGenAI({ apiKey }));
-        } else {
-            setError('API key is not configured.');
-        }
+        // As requested, using the provided API key directly to ensure functionality.
+        const apiKey = "AIzaSyDw5kuULKWXi8hDr_BhQyEUfZbVC_S7gcE";
+        setAi(new GoogleGenAI({ apiKey }));
     }, []);
 
     const scrollToBottom = () => {
@@ -44,7 +41,7 @@ const MediBot: React.FC = () => {
 
         try {
             const systemInstruction = `You are MediBot, a friendly and knowledgeable AI medical assistant. You can provide general information about health topics, symptoms, and medical terminology.
-            **Crucially, you must always include the following disclaimer at the end of your response: 'Disclaimer: I am an AI assistant and not a medical professional. Please consult with a qualified healthcare provider for any medical advice or diagnosis.'**`;
+            *Crucially, you must always include the following disclaimer at the end of your response: 'Disclaimer: I am an AI assistant and not a medical professional. Please consult with a qualified healthcare provider for any medical advice or diagnosis.'*`;
 
             const contents = messages.map(msg => ({
                 role: msg.role,
@@ -61,9 +58,14 @@ const MediBot: React.FC = () => {
             const modelMessage: Message = { role: 'model', text: response.text };
             setMessages(prev => [...prev, modelMessage]);
 
-        } catch (err) {
+        } catch (err: any) {
             console.error("MediBot Error:", err);
-            setError('Sorry, something went wrong. Please try again.');
+            const errorMessage = err.toString();
+            if (errorMessage.includes("API_KEY_INVALID")) {
+                setError('MediBot is offline: The provided API key is invalid. Please check the configuration.');
+            } else {
+                setError('Sorry, something went wrong. Please try again.');
+            }
         } finally {
             setIsLoading(false);
         }
@@ -71,7 +73,14 @@ const MediBot: React.FC = () => {
 
     return (
         <>
-            <div className={`fixed bottom-6 right-6 z-50 transition-all duration-300 ${isOpen ? 'opacity-0 scale-90 pointer-events-none' : 'opacity-100 scale-100'}`}>
+            {/* Floating open button */}
+            <div
+                className={`fixed bottom-6 right-6 z-50 transition-all duration-300 ${
+                    isOpen
+                        ? 'opacity-0 scale-90 pointer-events-none'
+                        : 'opacity-100 scale-100'
+                }`}
+            >
                 <button
                     onClick={() => setIsOpen(true)}
                     className="bg-primary text-white rounded-full w-16 h-16 flex items-center justify-center shadow-lg hover:bg-primary-700"
@@ -81,7 +90,14 @@ const MediBot: React.FC = () => {
                 </button>
             </div>
 
-            <div className={`fixed bottom-6 right-6 z-50 w-full max-w-sm h-[70vh] bg-white rounded-2xl shadow-2xl flex flex-col transition-all duration-300 origin-bottom-right ${isOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-90 pointer-events-none'}`}>
+            {/* Chat window */}
+            <div
+                className={`fixed bottom-6 right-6 z-50 w-full max-w-sm h-[70vh] bg-white rounded-2xl shadow-2xl flex flex-col transition-all duration-300 origin-bottom-right ${
+                    isOpen
+                        ? 'opacity-100 scale-100'
+                        : 'opacity-0 scale-90 pointer-events-none'
+                }`}
+            >
                 <header className="flex items-center justify-between p-4 border-b bg-slate-50 rounded-t-2xl">
                     <div className="flex items-center gap-2">
                         <BotIcon className="h-6 w-6 text-primary" />
@@ -99,13 +115,19 @@ const MediBot: React.FC = () => {
                         </div>
                         {messages.map((msg, index) => (
                             <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`max-w-xs px-4 py-2 rounded-2xl whitespace-pre-wrap ${msg.role === 'user' ? 'bg-primary text-white' : 'bg-white text-slate-800 shadow-sm'}`}>
+                                <div
+                                    className={`max-w-xs px-4 py-2 rounded-2xl whitespace-pre-wrap ${
+                                        msg.role === 'user'
+                                            ? 'bg-primary text-white'
+                                            : 'bg-white text-slate-800 shadow-sm'
+                                    }`}
+                                >
                                     {msg.text}
                                 </div>
                             </div>
                         ))}
                         {isLoading && (
-                             <div className="flex justify-start">
+                            <div className="flex justify-start">
                                 <div className="max-w-xs px-4 py-2 rounded-2xl bg-white text-slate-800 shadow-sm">
                                     <div className="flex items-center gap-2">
                                         <div className="w-2 h-2 bg-slate-400 rounded-full animate-pulse [animation-delay:-0.3s]"></div>
@@ -129,9 +151,13 @@ const MediBot: React.FC = () => {
                             onKeyPress={(e) => e.key === 'Enter' && handleSend()}
                             placeholder="Ask a medical question..."
                             className="flex-grow px-4 py-2 border border-slate-300 rounded-full focus:ring-2 focus:ring-primary-300 focus:border-primary-500 transition"
-                            disabled={isLoading}
+                            disabled={isLoading || !ai}
                         />
-                        <button onClick={handleSend} disabled={isLoading || !input.trim()} className="bg-primary text-white rounded-full w-10 h-10 flex-shrink-0 flex items-center justify-center disabled:bg-primary-300">
+                        <button
+                            onClick={handleSend}
+                            disabled={isLoading || !input.trim() || !ai}
+                            className="bg-primary text-white rounded-full w-10 h-10 flex-shrink-0 flex items-center justify-center disabled:bg-primary-300"
+                        >
                             <SendIcon className="h-5 w-5" />
                         </button>
                     </div>
@@ -139,6 +165,6 @@ const MediBot: React.FC = () => {
             </div>
         </>
     );
-};
+}; 
 
 export default MediBot;
