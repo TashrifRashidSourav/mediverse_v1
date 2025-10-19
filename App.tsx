@@ -25,6 +25,8 @@ import PatientAppointmentsPage from './pages/patient-portal/dashboard/PatientApp
 import PatientPrescriptionsPage from './pages/patient-portal/dashboard/PatientPrescriptionsPage';
 import PatientBillingPage from './pages/patient-portal/dashboard/PatientBillingPage';
 import BookAppointmentPage from './pages/patient-portal/BookAppointmentPage';
+import VideoCallPage from './pages/VideoCallPage';
+import AuthenticatedRoute from './components/AuthenticatedRoute'; // New import
 
 // Doctor Portal Imports
 import DoctorLoginPage from './pages/doctor-portal/DoctorLoginPage';
@@ -99,6 +101,13 @@ const App: React.FC = () => {
       {/* Deprecated Patient Portal Routes - redirect or show not found */}
       <Route path="/:subdomain/patient-portal/*" element={<NotFoundPage />} />
 
+      {/* Video Calling Route - accessible by both doctors and patients */}
+      <Route path="/meet/:hospitalId/:appointmentId" element={
+        <AuthenticatedRoute>
+            <VideoCallPage />
+        </AuthenticatedRoute>
+      } />
+
       {/* Fallback 404 Not Found Route */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
@@ -107,7 +116,7 @@ const App: React.FC = () => {
 
 const HospitalSitePageWrapper = () => {
     const { subdomain } = useParams<{ subdomain: string }>();
-    const reservedPaths = ['signup', 'login', 'patient', 'doctor-portal', 'book-appointment'];
+    const reservedPaths = ['signup', 'login', 'patient', 'doctor-portal', 'book-appointment', 'meet'];
 
     if (subdomain && reservedPaths.includes(subdomain)) {
         return <NotFoundPage />;

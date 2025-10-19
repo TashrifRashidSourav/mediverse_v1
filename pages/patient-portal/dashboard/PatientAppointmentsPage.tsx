@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { db, auth } from '../../../firebase';
 import { Appointment, AppointmentStatus } from '../../../types';
 import { CalendarIcon } from '../../../components/icons/CalendarIcon';
+import { Link } from 'react-router-dom';
 
 const PatientAppointmentsPage: React.FC = () => {
     const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -88,7 +89,7 @@ const PatientAppointmentsPage: React.FC = () => {
                                 <th className="p-4 font-semibold text-slate-600">Doctor</th>
                                 <th className="p-4 font-semibold text-slate-600">Date & Time</th>
                                 <th className="p-4 font-semibold text-slate-600">Serial No.</th>
-                                <th className="p-4 font-semibold text-slate-600">Status</th>
+                                <th className="p-4 font-semibold text-slate-600">Status / Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -109,7 +110,13 @@ const PatientAppointmentsPage: React.FC = () => {
                                         <td className="p-4 text-slate-700">{new Date(app.date).toLocaleDateString()} at {app.time}</td>
                                         <td className="p-4 font-bold text-slate-700">{app.serialNumber || 'Pending'}</td>
                                         <td className="p-4">
-                                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(app.status)}`}>{app.status}</span>
+                                             {app.appointmentType === 'Online' && app.status === AppointmentStatus.Confirmed && app.meetingLink ? (
+                                                <Link to={app.meetingLink} className="bg-green-600 text-white font-semibold text-sm py-2 px-4 rounded-lg hover:bg-green-700 transition-colors inline-block">
+                                                    Join Meeting
+                                                </Link>
+                                            ) : (
+                                                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(app.status)}`}>{app.status}</span>
+                                            )}
                                         </td>
                                     </tr>
                                 ))
