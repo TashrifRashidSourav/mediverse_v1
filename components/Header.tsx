@@ -68,7 +68,8 @@ const Header: React.FC = () => {
           </Link>
           <div className="hidden md:flex items-center gap-6">
             <nav className="flex items-center space-x-8">
-              <button onClick={() => handleNavAndScroll('features')} className="text-slate-600 hover:text-primary transition-colors">Features</button>
+              <Link to="/hospitals" className="text-slate-600 hover:text-primary transition-colors">Hospitals</Link>
+              <Link to="/doctors" className="text-slate-600 hover:text-primary transition-colors">Doctors</Link>
               <button onClick={() => handleNavAndScroll('pricing')} className="text-slate-600 hover:text-primary transition-colors">Pricing</button>
               <button onClick={() => handleNavAndScroll('contact')} className="text-slate-600 hover:text-primary transition-colors">Contact</button>
             </nav>

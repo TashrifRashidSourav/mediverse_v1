@@ -29,6 +29,9 @@ export interface User {
   subdomain: string;
   plan: PlanTier;
   status?: 'pending' | 'approved' | 'rejected';
+  location?: string;
+  logoUrl?: string;
+  advertisedDoctors?: AdvertisedDoctor[];
 }
 
 export interface Availability {
@@ -51,6 +54,13 @@ export interface Doctor {
     experience?: string; // e.g. "5 Years"
     fees?: number;
     availability?: Availability[];
+}
+
+export interface AdvertisedDoctor extends Doctor {
+    hospitalId: string;
+    hospitalName: string;
+    subdomain: string;
+    advertisedAt: any; // Firestore Timestamp
 }
 
 export enum PatientStatus {

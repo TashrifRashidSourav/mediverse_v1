@@ -126,6 +126,7 @@ const SignUpPage: React.FC = () => {
             subdomain: formData.subdomain,
             plan: plan.tier,
             status: 'pending',
+            location: formData.location, // Save location for public list
         };
         await db.collection("users").doc(createdUser.uid).set(newUserProfile);
         await auth.signOut(); // Ensure user is not auto-logged in

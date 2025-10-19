@@ -10,6 +10,7 @@ import { InventoryIcon } from '../icons/InventoryIcon';
 import { ReportsIcon } from '../icons/ReportsIcon';
 import { GlobeIcon } from '../icons/GlobeIcon';
 import { XIcon } from '../icons/XIcon';
+import { MegaphoneIcon } from '../icons/MegaphoneIcon';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ const navItems = [
   { name: 'Patients', path: 'patients', icon: UsersIcon },
   { name: 'Appointments', path: 'appointments', icon: CalendarIcon },
   { name: 'Website', path: 'settings', icon: GlobeIcon },
+  { name: 'Advertise', path: 'advertise', icon: MegaphoneIcon },
   { name: 'Billing', path: 'billing', icon: BillingIcon },
   { name: 'Inventory', path: 'inventory', icon: InventoryIcon },
   { name: 'Reports', path: 'reports', icon: ReportsIcon },
