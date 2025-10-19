@@ -1,15 +1,14 @@
-
 import { type Plan, PlanTier } from './types';
 
 export const PLANS: Plan[] = [
   {
     tier: PlanTier.General,
-    price: 49,
+    price: 550,
     features: [
       'Custom Subdomain',
       'Basic Website Template',
-      'Contact Form',
-      'Location Map',
+      'Contact & Location Info',
+      'Up to 10 Doctor Profiles',
       '5GB Storage',
       'Email Support',
     ],
@@ -18,28 +17,30 @@ export const PLANS: Plan[] = [
   },
   {
     tier: PlanTier.Premium,
-    price: 99,
+    price: 850,
     features: [
       'Everything in General',
       'Advanced Website Templates',
       'Online Appointment Booking',
-      'Patient Portal (Basic)',
+      'Basic Patient Portal',
+      'Up to 50 Doctor Profiles',
       '20GB Storage',
-      'Priority Email Support',
+      'Priority Support',
     ],
     isRecommended: true,
     ctaText: 'Choose Premium',
   },
   {
     tier: PlanTier.Golden,
-    price: 199,
+    price: 1000,
     features: [
       'Everything in Premium',
-      'Custom Website Design',
-      'E-commerce for Pharmacy',
+      'Customizable Website Design',
+      'Online Video Consultation',
       'Advanced Patient Portal',
+      'Unlimited Doctor Profiles',
       'Unlimited Storage',
-      '24/7 Phone Support',
+      '24/7 Phone Support & MediBot AI',
     ],
     isRecommended: false,
     ctaText: 'Go Golden',

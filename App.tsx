@@ -26,7 +26,8 @@ import PatientPrescriptionsPage from './pages/patient-portal/dashboard/PatientPr
 import PatientBillingPage from './pages/patient-portal/dashboard/PatientBillingPage';
 import BookAppointmentPage from './pages/patient-portal/BookAppointmentPage';
 import VideoCallPage from './pages/VideoCallPage';
-import AuthenticatedRoute from './components/AuthenticatedRoute'; // New import
+import AuthenticatedRoute from './components/AuthenticatedRoute';
+import PendingApprovalPage from './pages/PendingApprovalPage';
 
 // Doctor Portal Imports
 import DoctorLoginPage from './pages/doctor-portal/DoctorLoginPage';
@@ -36,6 +37,11 @@ import DoctorDashboardHome from './pages/doctor-portal/dashboard/DoctorDashboard
 import DoctorPatientAccessPage from './pages/doctor-portal/dashboard/DoctorPatientAccessPage';
 import DoctorPrescriptionPage from './pages/doctor-portal/dashboard/DoctorPrescriptionPage';
 
+// Super Admin Imports
+import SuperAdminLoginPage from './pages/super-admin/SuperAdminLoginPage';
+import SuperAdminDashboardPage from './pages/super-admin/SuperAdminDashboardPage';
+import SuperAdminProtectedRoute from './components/super-admin/SuperAdminProtectedRoute';
+
 
 const App: React.FC = () => {
   return (
@@ -43,6 +49,17 @@ const App: React.FC = () => {
       <Route path="/" element={<HomePage />} />
       <Route path="/signup" element={<SignUpPage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/pending-approval" element={<PendingApprovalPage />} />
+
+
+      {/* Super Admin Routes */}
+      <Route path="/super-admin/login" element={<SuperAdminLoginPage />} />
+      <Route path="/super-admin/dashboard" element={
+        <SuperAdminProtectedRoute>
+          <SuperAdminDashboardPage />
+        </SuperAdminProtectedRoute>
+      } />
+
 
       {/* NEW: Global Patient Portal Routes */}
       <Route path="/patient/login" element={<PatientLoginPage />} />
@@ -116,7 +133,7 @@ const App: React.FC = () => {
 
 const HospitalSitePageWrapper = () => {
     const { subdomain } = useParams<{ subdomain: string }>();
-    const reservedPaths = ['signup', 'login', 'patient', 'doctor-portal', 'book-appointment', 'meet'];
+    const reservedPaths = ['signup', 'login', 'patient', 'doctor-portal', 'book-appointment', 'meet', 'pending-approval', 'super-admin'];
 
     if (subdomain && reservedPaths.includes(subdomain)) {
         return <NotFoundPage />;

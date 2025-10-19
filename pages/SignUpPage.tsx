@@ -94,16 +94,20 @@ const SignUpPage: React.FC = () => {
         throw new Error("User creation failed unexpectedly.");
       }
 
-      // Step 3: Save profile in Firestore.
+      // Step 3: Save profile in Firestore with 'approved' status.
       const newUserProfile: User = {
         uid: createdUser.uid,
         email: formData.email,
         hospitalName: formData.hospitalName,
         subdomain: formData.subdomain,
         plan: plan!.tier,
+        status: 'approved', // Auto-approved
       };
 
       await db.collection("users").doc(createdUser.uid).set(newUserProfile);
+      
+      // We don't want the user to be auto-logged-in
+      await auth.signOut();
 
       setSubmissionSuccess(true);
     } catch (err: any) {
@@ -140,17 +144,16 @@ const SignUpPage: React.FC = () => {
             {submissionSuccess ? (
               <div className="text-center py-12">
                 <h2 className="text-3xl font-bold text-primary mb-4">
-                  Account Created!
+                  Account Created Successfully!
                 </h2>
                 <p className="text-slate-600 mb-6">
-                  Your hospital website is ready. Please log in to access your
-                  dashboard.
+                  Your hospital account is ready. You can now log in to your dashboard and start setting up your website.
                 </p>
                 <Link
                   to="/login"
                   className="mt-8 w-full max-w-xs mx-auto block text-center bg-primary text-white font-bold py-3 px-6 rounded-lg hover:bg-primary-700 transition-colors"
                 >
-                  Go to Login
+                  Go to Login Page
                 </Link>
               </div>
             ) : (
@@ -272,7 +275,7 @@ const SignUpPage: React.FC = () => {
                   >
                     {isSubmitting
                       ? "Creating Account..."
-                      : `Create My Website for $${plan.price}/mo`}
+                      : `Create Account`}
                   </button>
                 </form>
               </>

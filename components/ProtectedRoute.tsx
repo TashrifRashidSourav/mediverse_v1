@@ -1,8 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
-// FIX: Module '"firebase/auth"' has no exported member 'onAuthStateChanged' or 'User'.
-// Switched to Firebase v8 style imports and usage.
-// FIX: Changed to compat import to resolve firebase.User type error.
 import firebase from 'firebase/compat/app';
 import { auth } from '../firebase';
 
@@ -11,17 +8,21 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  // FIX: Use firebase.User for v8 compatibility
   const [user, setUser] = useState<firebase.User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState<'approved' | 'pending' | 'rejected' | null>(null);
 
   useEffect(() => {
-    // FIX: Switched from modular onAuthStateChanged(auth, ...) to namespaced auth.onAuthStateChanged(...)
     const unsubscribe = auth.onAuthStateChanged((currentUser) => {
       setUser(currentUser);
+      if (currentUser) {
+        const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+        if (userProfile.uid === currentUser.uid) {
+          setStatus(userProfile.status);
+        }
+      }
       setLoading(false);
     });
-    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, []);
 
@@ -30,6 +31,16 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   }
 
   if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (status === 'pending') {
+    return <Navigate to="/pending-approval" replace />;
+  }
+  
+  if (status !== 'approved') {
+     // If status is rejected or null, log out and redirect
+    auth.signOut();
     return <Navigate to="/login" replace />;
   }
 
