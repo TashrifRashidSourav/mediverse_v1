@@ -165,6 +165,6 @@ const MediBot: React.FC = () => {
             </div>
         </>
     );
-};
+}; 
 
 export default MediBot;
