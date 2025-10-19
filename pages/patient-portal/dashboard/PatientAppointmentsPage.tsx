@@ -20,42 +20,23 @@ const PatientAppointmentsPage: React.FC = () => {
         setIsLoading(true);
         setError('');
         try {
-            // Firestore collection group queries require a specific index. 
-            // To avoid manual index creation for this demo, we are fetching all hospitals
-            // and then querying each one for the patient's appointments.
-            // WARNING: This approach is NOT scalable for a production application with many hospitals.
-            // The recommended production solution is to create the single-field index in Firestore
-            // as suggested by the error message, and use the more efficient collectionGroup query:
-            // const snapshot = await db.collectionGroup('appointments').where('authUid', '==', currentUser.uid).get();
+            // Use a collection group query, which is now supported by the security rules.
+            // This is far more efficient than fetching all hospitals first.
+            const snapshot = await db.collectionGroup('appointments')
+                .where('authUid', '==', currentUser.uid)
+                .orderBy('date', 'desc')
+                .get();
 
-            // 1. Fetch all hospitals
-            const hospitalsSnapshot = await db.collection('users').get();
-            const hospitalIds = hospitalsSnapshot.docs.map(doc => doc.id);
-
-            // 2. Create a query promise for each hospital
-            const appointmentPromises = hospitalIds.map(hospitalId => 
-                db.collection('users').doc(hospitalId)
-                  .collection('appointments')
-                  .where('authUid', '==', currentUser.uid)
-                  .get()
-            );
-
-            // 3. Execute all queries and flatten the results
-            const appointmentSnapshots = await Promise.all(appointmentPromises);
-            const allAppointments: Appointment[] = [];
-            appointmentSnapshots.forEach(snapshot => {
-                snapshot.forEach(doc => {
-                    allAppointments.push({ id: doc.id, ...doc.data() } as Appointment);
-                });
-            });
-
-            // 4. Client-side sort to maintain order
-            allAppointments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            const allAppointments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
             setAppointments(allAppointments);
 
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
-            setError('Failed to fetch appointments. Please ensure your Firestore security rules allow reading from the "users" collection.');
+            if (err.code === 'failed-precondition') {
+                 setError('Query requires an index. Please check the browser console for a link to create it in Firebase.');
+            } else {
+                setError('Failed to fetch appointments. Please check your Firestore security rules.');
+            }
         } finally {
             setIsLoading(false);
         }

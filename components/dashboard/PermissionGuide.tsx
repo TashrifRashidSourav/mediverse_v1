@@ -108,6 +108,17 @@ service cloud.firestore {
       // Prevent client-side deletion for safety
       allow delete: if false;
     }
+
+    // --- Advertised Doctors Collection (Public) ---
+    match /advertisedDoctors/{doctorId} {
+      // Public can read the list of advertised doctors for the directory page.
+      allow read: if true;
+
+      // Only the authenticated hospital admin can create, update, or delete an advertisement.
+      // We verify ownership by matching the auth UID with the hospitalId stored in the document.
+      allow create, update: if request.auth != null && request.auth.uid == request.resource.data.hospitalId;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.hospitalId;
+    }
   }
 }`;
 

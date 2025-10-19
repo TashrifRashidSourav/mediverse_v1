@@ -165,7 +165,15 @@ const WebsiteSettings: React.FC = () => {
         if (!hospitalId) return;
         setIsSaving(true);
         try {
+            // Save to subcollection
             await db.collection('users').doc(hospitalId).collection('settings').doc('site').set(settings, { merge: true });
+
+            // Denormalize key data to parent user doc for faster public list fetching
+            await db.collection('users').doc(hospitalId).update({
+                logoUrl: settings.logoUrl,
+                location: settings.address,
+            });
+
             alert("Settings saved successfully!");
         } catch (error: any) {
              if (error.code === 'permission-denied') setPermissionError(true);
