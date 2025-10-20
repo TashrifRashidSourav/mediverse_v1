@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { type User, type SiteSettings, type Doctor } from '../../types';
@@ -8,6 +9,7 @@ import { FacebookIcon } from '../../components/icons/FacebookIcon';
 import { TwitterIcon } from '../../components/icons/TwitterIcon';
 import { InstagramIcon } from '../../components/icons/InstagramIcon';
 import { LinkedInIcon } from '../../components/icons/LinkedInIcon';
+import ChatWidget from '../../components/ChatWidget';
 
 const socialIcons = {
     Facebook: FacebookIcon,
@@ -202,6 +204,7 @@ const GoldenTemplate: React.FC<{ hospital: User }> = ({ hospital }) => {
           </div>
         </footer>
       </div>
+      <ChatWidget hospitalId={hospital.uid} hospitalName={hospital.hospitalName} plan={hospital.plan} themeColor={themeColor} />
     </>
   );
 };

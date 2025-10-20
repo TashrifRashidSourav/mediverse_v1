@@ -40,6 +40,11 @@ const PatientSignUpPage: React.FC = () => {
             if (!createdUser) {
                 throw new Error("Failed to create user account.");
             }
+            
+            // Set the displayName on the auth user profile
+            await createdUser.updateProfile({
+                displayName: formData.name
+            });
 
             // 2. Create the patient profile in the global /patients collection
             const newPatientProfile: Omit<Patient, 'id' | 'admittedDate' | 'status'> = {

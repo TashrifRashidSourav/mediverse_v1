@@ -32,7 +32,7 @@ const DashboardPage: React.FC = () => {
             const userDoc = await db.collection('users').doc(currentUser.uid).get();
             if (userDoc.exists) {
                 const userData = userDoc.data() as User;
-                if (userData.plan === PlanTier.Golden) {
+                if (userData.plan === PlanTier.Golden || userData.plan === PlanTier.Premium) {
                     setShowMediBot(true);
                 }
             }

@@ -34,6 +34,8 @@ import PaymentCancelPage from './pages/PaymentCancelPage';
 import HospitalListPage from './pages/HospitalListPage';
 import MediDoctorPage from './pages/MediDoctorPage';
 import AdvertisePage from './pages/dashboard/AdvertisePage';
+import ChatManagement from './pages/dashboard/ChatManagement';
+import PatientChatPage from './pages/patient-portal/dashboard/PatientChatPage';
 
 // Doctor Portal Imports
 import DoctorLoginPage from './pages/doctor-portal/DoctorLoginPage';
@@ -87,6 +89,7 @@ const App: React.FC = () => {
         <Route path="billing" element={<PatientBillingPage />} />
         <Route path="hospitals" element={<HospitalListPage />} />
         <Route path="doctors" element={<MediDoctorPage />} />
+        <Route path="chat" element={<PatientChatPage />} />
       </Route>
       
       {/* NEW: Patient Appointment Booking Route */}
@@ -114,6 +117,7 @@ const App: React.FC = () => {
         <Route path="reports" element={<ReportsPage />} />
         <Route path="settings" element={<WebsiteSettings />} />
         <Route path="advertise" element={<AdvertisePage />} />
+        <Route path="chat" element={<ChatManagement />} />
       </Route>
       
       {/* Doctor Portal Routes */}
