@@ -85,6 +85,8 @@ const App: React.FC = () => {
         <Route path="appointments" element={<PatientAppointmentsPage />} />
         <Route path="prescriptions" element={<PatientPrescriptionsPage />} />
         <Route path="billing" element={<PatientBillingPage />} />
+        <Route path="hospitals" element={<HospitalListPage />} />
+        <Route path="doctors" element={<MediDoctorPage />} />
       </Route>
       
       {/* NEW: Patient Appointment Booking Route */}

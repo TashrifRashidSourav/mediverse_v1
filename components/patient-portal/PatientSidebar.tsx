@@ -7,6 +7,8 @@ import { BillingIcon } from '../icons/BillingIcon';
 import { ReportsIcon } from '../icons/ReportsIcon'; // Re-using for prescriptions
 import { XIcon } from '../icons/XIcon';
 import { LayoutDashboardIcon } from '../icons/LayoutDashboardIcon';
+import { StethoscopeIcon } from '../icons/StethoscopeIcon';
+import { BuildingOfficeIcon } from '../icons/BuildingOfficeIcon';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -17,6 +19,8 @@ interface SidebarProps {
 const navItems = [
   { name: 'Dashboard', path: '/patient/dashboard', icon: LayoutDashboardIcon, end: true },
   { name: 'My Profile', path: '/patient/dashboard/profile', icon: UserCircleIcon },
+  { name: 'Find a Doctor', path: '/patient/dashboard/doctors', icon: StethoscopeIcon },
+  { name: 'Hospitals', path: '/patient/dashboard/hospitals', icon: BuildingOfficeIcon },
   { name: 'Appointments', path: '/patient/dashboard/appointments', icon: CalendarIcon },
   { name: 'Prescriptions', path: '/patient/dashboard/prescriptions', icon: ReportsIcon },
   { name: 'Billing', path: '/patient/dashboard/billing', icon: BillingIcon },

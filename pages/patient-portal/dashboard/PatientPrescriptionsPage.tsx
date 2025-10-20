@@ -25,22 +25,34 @@ const PatientPrescriptionsPage: React.FC = () => {
         setIsLoading(true);
         setError('');
         try {
-            // Use a collection group query, which is now supported by the security rules.
-            // This is far more efficient than fetching all hospitals first.
-            const snapshot = await db.collectionGroup('prescriptions')
-                .where('authUid', '==', currentUser.uid)
-                .orderBy('date', 'desc')
-                .get();
+            const allPrescriptions: Prescription[] = [];
+            const hospitalsSnapshot = await db.collection('users').get();
+
+            const promises = hospitalsSnapshot.docs.map(hospitalDoc => 
+                db.collection('users').doc(hospitalDoc.id).collection('prescriptions')
+                    .where('authUid', '==', currentUser.uid)
+                    .get()
+            );
+
+            const results = await Promise.all(promises);
+
+            results.forEach(snapshot => {
+                snapshot.forEach(doc => {
+                    allPrescriptions.push({ id: doc.id, ...doc.data() } as Prescription);
+                });
+            });
+
+            // Sort by date descending
+            allPrescriptions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
             
-            const allPrescriptions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Prescription));
             setPrescriptions(allPrescriptions);
 
         } catch (err: any) {
             console.error(err);
-            if (err.code === 'failed-precondition') {
-                 setError('Query requires an index. Please check the browser console for a link to create it in Firebase.');
+            if (err.code === 'permission-denied') {
+                setError('Permission Denied. Please ensure your Firestore security rules are up to date.');
             } else {
-                setError('Failed to fetch prescriptions. Please check your Firestore security rules.');
+                setError('Failed to fetch prescriptions.');
             }
         } finally {
             setIsLoading(false);
