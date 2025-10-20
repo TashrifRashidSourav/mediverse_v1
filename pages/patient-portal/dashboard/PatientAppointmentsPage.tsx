@@ -20,22 +20,36 @@ const PatientAppointmentsPage: React.FC = () => {
         setIsLoading(true);
         setError('');
         try {
-            // Use a collection group query, which is now supported by the security rules.
-            // This is far more efficient than fetching all hospitals first.
-            const snapshot = await db.collectionGroup('appointments')
-                .where('authUid', '==', currentUser.uid)
-                .orderBy('date', 'desc')
-                .get();
+            const allAppointments: Appointment[] = [];
+            const hospitalsSnapshot = await db.collection('users').get();
 
-            const allAppointments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
+            // Create an array of promises for all the subcollection queries
+            const promises = hospitalsSnapshot.docs.map(hospitalDoc => {
+                return db.collection('users').doc(hospitalDoc.id).collection('appointments')
+                    .where('authUid', '==', currentUser.uid)
+                    .get();
+            });
+            
+            // Wait for all queries to complete
+            const results = await Promise.all(promises);
+            
+            results.forEach(snapshot => {
+                snapshot.forEach(doc => {
+                    allAppointments.push({ id: doc.id, ...doc.data() } as Appointment);
+                });
+            });
+
+            // Sort appointments by date descending
+            allAppointments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            
             setAppointments(allAppointments);
 
         } catch (err: any) {
             console.error(err);
-            if (err.code === 'failed-precondition') {
-                 setError('Query requires an index. Please check the browser console for a link to create it in Firebase.');
+             if (err.code === 'permission-denied') {
+                 setError('Permission Denied. Please ensure your Firestore security rules are up to date.');
             } else {
-                setError('Failed to fetch appointments. Please check your Firestore security rules.');
+                setError('Failed to fetch appointments.');
             }
         } finally {
             setIsLoading(false);

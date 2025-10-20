@@ -5,7 +5,7 @@ import PatientSidebar from '../../components/patient-portal/PatientSidebar';
 import { MenuIcon } from '../../components/icons/MenuIcon';
 import { ChevronDownIcon } from '../../components/icons/ChevronDownIcon';
 import { UserCircleIcon } from '../../components/icons/UserCircleIcon';
-import { PlanTier } from '../../types';
+import { PlanTier, User } from '../../types';
 import MediBot from '../../components/MediBot';
 
 interface PatientProfile {
@@ -33,21 +33,30 @@ const PatientDashboardPage: React.FC = () => {
             setPatientProfile(parsed);
             
             const checkGoldenPlanAccess = async () => {
+                if (!currentUser) return;
                 try {
-                    const appointmentQuery = db.collectionGroup('appointments').where('authUid', '==', currentUser.uid).get();
-                    const prescriptionQuery = db.collectionGroup('prescriptions').where('authUid', '==', currentUser.uid).get();
+                    const hospitalsSnapshot = await db.collection('users').get();
+                    let hasGoldenAccess = false;
 
-                    const [appSnapshot, presSnapshot] = await Promise.all([appointmentQuery, prescriptionQuery]);
+                    for (const hospitalDoc of hospitalsSnapshot.docs) {
+                        const hospitalData = hospitalDoc.data() as User;
+                        if (hospitalData.plan === PlanTier.Golden) {
+                            // This is a Golden hospital, check if the patient has any record here.
+                            const appointmentsRef = db.collection('users').doc(hospitalDoc.id).collection('appointments');
+                            const prescriptionsRef = db.collection('users').doc(hospitalDoc.id).collection('prescriptions');
 
-                    const hospitalIds = new Set<string>();
-                    appSnapshot.forEach(doc => hospitalIds.add(doc.data().hospitalId));
-                    presSnapshot.forEach(doc => hospitalIds.add(doc.data().hospitalId));
+                            const appQuery = appointmentsRef.where('authUid', '==', currentUser.uid).limit(1).get();
+                            const presQuery = prescriptionsRef.where('authUid', '==', currentUser.uid).limit(1).get();
 
-                    if (hospitalIds.size > 0) {
-                        const hospitalDocs = await db.collection('users').where(firebase.firestore.FieldPath.documentId(), 'in', Array.from(hospitalIds)).get();
-                        const hasGolden = hospitalDocs.docs.some(doc => doc.data().plan === PlanTier.Golden);
-                        setShowMediBot(hasGolden);
+                            const [appSnapshot, presSnapshot] = await Promise.all([appQuery, presQuery]);
+
+                            if (!appSnapshot.empty || !presSnapshot.empty) {
+                                hasGoldenAccess = true;
+                                break; // Found access, no need to check other hospitals
+                            }
+                        }
                     }
+                    setShowMediBot(hasGoldenAccess);
                 } catch (e) {
                     console.error("Could not check for Golden Plan access:", e);
                 }
