@@ -183,3 +183,11 @@ export interface Prescription {
     advice?: string;
     nextVisit?: string; // Optional date string
 }
+
+export interface ChatMessage {
+  id: string;
+  text: string;
+  senderId: 'AI' | string; // Patient UID or Hospital UID or 'AI'
+  senderName: string;
+  timestamp: any;
+}

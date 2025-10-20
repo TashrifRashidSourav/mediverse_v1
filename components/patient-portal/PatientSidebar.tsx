@@ -9,6 +9,7 @@ import { XIcon } from '../icons/XIcon';
 import { LayoutDashboardIcon } from '../icons/LayoutDashboardIcon';
 import { StethoscopeIcon } from '../icons/StethoscopeIcon';
 import { BuildingOfficeIcon } from '../icons/BuildingOfficeIcon';
+import { MessageSquareIcon } from '../icons/MessageSquareIcon';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ const navItems = [
   { name: 'My Profile', path: '/patient/dashboard/profile', icon: UserCircleIcon },
   { name: 'Find a Doctor', path: '/patient/dashboard/doctors', icon: StethoscopeIcon },
   { name: 'Hospitals', path: '/patient/dashboard/hospitals', icon: BuildingOfficeIcon },
+  { name: 'My Chats', path: '/patient/dashboard/chat', icon: MessageSquareIcon },
   { name: 'Appointments', path: '/patient/dashboard/appointments', icon: CalendarIcon },
   { name: 'Prescriptions', path: '/patient/dashboard/prescriptions', icon: ReportsIcon },
   { name: 'Billing', path: '/patient/dashboard/billing', icon: BillingIcon },

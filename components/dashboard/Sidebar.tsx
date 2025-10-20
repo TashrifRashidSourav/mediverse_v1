@@ -11,6 +11,7 @@ import { ReportsIcon } from '../icons/ReportsIcon';
 import { GlobeIcon } from '../icons/GlobeIcon';
 import { XIcon } from '../icons/XIcon';
 import { MegaphoneIcon } from '../icons/MegaphoneIcon';
+import { MessageSquareIcon } from '../icons/MessageSquareIcon';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ const navItems = [
   { name: 'Doctors', path: 'doctors', icon: StethoscopeIcon },
   { name: 'Patients', path: 'patients', icon: UsersIcon },
   { name: 'Appointments', path: 'appointments', icon: CalendarIcon },
+  { name: 'Chat', path: 'chat', icon: MessageSquareIcon },
   { name: 'Website', path: 'settings', icon: GlobeIcon },
   { name: 'Advertise', path: 'advertise', icon: MegaphoneIcon },
   { name: 'Billing', path: 'billing', icon: BillingIcon },

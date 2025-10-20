@@ -1,10 +1,12 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { type User, type SiteSettings, type Doctor } from '../../types';
 import { MedicalIcon } from '../../components/icons/MedicalIcon';
 import { db } from '../../firebase';
 import { UserCircleIcon } from '../../components/icons/UserCircleIcon';
+import ChatWidget from '../../components/ChatWidget';
 
 interface TemplateProps {
   hospital: User;
@@ -44,6 +46,7 @@ const PremiumTemplate: React.FC<TemplateProps> = ({ hospital }) => {
   }
 
   return (
+    <>
     <div className="bg-slate-50 font-sans">
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-lg sticky top-0 z-40 border-b border-slate-200">
@@ -137,6 +140,8 @@ const PremiumTemplate: React.FC<TemplateProps> = ({ hospital }) => {
         </div>
       </footer>
     </div>
+    <ChatWidget hospitalId={hospital.uid} hospitalName={hospital.hospitalName} plan={hospital.plan} themeColor={settings.themeColor} />
+    </>
   );
 };
 

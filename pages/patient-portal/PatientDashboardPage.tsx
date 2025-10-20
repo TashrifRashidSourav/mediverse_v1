@@ -36,12 +36,12 @@ const PatientDashboardPage: React.FC = () => {
                 if (!currentUser) return;
                 try {
                     const hospitalsSnapshot = await db.collection('users').get();
-                    let hasGoldenAccess = false;
+                    let hasAccess = false;
 
                     for (const hospitalDoc of hospitalsSnapshot.docs) {
                         const hospitalData = hospitalDoc.data() as User;
-                        if (hospitalData.plan === PlanTier.Golden) {
-                            // This is a Golden hospital, check if the patient has any record here.
+                        if (hospitalData.plan === PlanTier.Golden || hospitalData.plan === PlanTier.Premium) {
+                            // This is a Golden or Premium hospital, check if the patient has any record here.
                             const appointmentsRef = db.collection('users').doc(hospitalDoc.id).collection('appointments');
                             const prescriptionsRef = db.collection('users').doc(hospitalDoc.id).collection('prescriptions');
 
@@ -51,14 +51,14 @@ const PatientDashboardPage: React.FC = () => {
                             const [appSnapshot, presSnapshot] = await Promise.all([appQuery, presQuery]);
 
                             if (!appSnapshot.empty || !presSnapshot.empty) {
-                                hasGoldenAccess = true;
+                                hasAccess = true;
                                 break; // Found access, no need to check other hospitals
                             }
                         }
                     }
-                    setShowMediBot(hasGoldenAccess);
+                    setShowMediBot(hasAccess);
                 } catch (e) {
-                    console.error("Could not check for Golden Plan access:", e);
+                    console.error("Could not check for Golden/Premium Plan access:", e);
                 }
             };
             
