@@ -16,10 +16,11 @@ const PendingApprovalPage: React.FC = () => {
             to="/" 
             className="mt-8 bg-primary text-white font-bold py-3 px-6 rounded-lg hover:bg-primary-700 transition-colors"
         >
-            Go Back to Mediverse Home
+            Go Back to Medicore Home
         </Link>
     </div>
   );
 };
 
 export default PendingApprovalPage;
+

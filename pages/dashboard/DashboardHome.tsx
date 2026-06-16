@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { UsersIcon } from '../../components/icons/UsersIcon';
 import { StethoscopeIcon } from '../../components/icons/StethoscopeIcon';
 import { CalendarIcon } from '../../components/icons/CalendarIcon';
 import { BillingIcon } from '../../components/icons/BillingIcon';
+import { db, auth } from '../../firebase';
+import { Appointment, Patient, PatientStatus, Invoice } from '../../types';
 
 const StatCard: React.FC<{ title: string; value: string; icon: React.ReactNode; color: string; }> = ({ title, value, icon, color }) => (
     <div className="bg-white p-6 rounded-xl shadow-md flex items-center gap-4">
@@ -17,77 +19,151 @@ const StatCard: React.FC<{ title: string; value: string; icon: React.ReactNode; 
 );
 
 const DashboardHome: React.FC = () => {
-  return (
-    <div>
-        <h1 className="text-3xl font-bold text-slate-900 mb-6">Dashboard Overview</h1>
-        
-        {/* Stat Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <StatCard title="Total Doctors" value="12" icon={<StethoscopeIcon className="h-6 w-6 text-white"/>} color="bg-blue-500" />
-            <StatCard title="Total Patients" value="348" icon={<UsersIcon className="h-6 w-6 text-white"/>} color="bg-green-500" />
-            <StatCard title="Appointments Today" value="27" icon={<CalendarIcon className="h-6 w-6 text-white"/>} color="bg-amber-500" />
-            <StatCard title="Revenue (This Month)" value="$45,230" icon={<BillingIcon className="h-6 w-6 text-white"/>} color="bg-primary-500" />
-        </div>
+    const [hospitalId, setHospitalId] = useState<string | null>(null);
+    const [totalDoctors, setTotalDoctors] = useState<number>(0);
+    const [totalPatients, setTotalPatients] = useState<number>(0);
+    const [appointmentsToday, setAppointmentsToday] = useState<number>(0);
+    const [revenueThisMonth, setRevenueThisMonth] = useState<number>(0);
+    const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>([]);
+    const [recentAdmissions, setRecentAdmissions] = useState<Patient[]>([]);
 
-        <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Upcoming Appointments */}
-            <div className="bg-white p-6 rounded-xl shadow-md">
-                <h2 className="text-xl font-bold text-slate-800 mb-4">Upcoming Appointments</h2>
-                <ul className="space-y-4">
-                    <li className="flex justify-between items-center">
-                        <div>
-                            <p className="font-semibold text-slate-700">John Doe with Dr. Smith</p>
-                            <p className="text-sm text-slate-500">10:30 AM - Cardiology</p>
-                        </div>
-                        <span className="text-sm font-medium text-slate-600">In 30 mins</span>
-                    </li>
-                    <li className="flex justify-between items-center">
-                        <div>
-                            <p className="font-semibold text-slate-700">Jane Roe with Dr. White</p>
-                            <p className="text-sm text-slate-500">11:00 AM - Pediatrics</p>
-                        </div>
-                        <span className="text-sm font-medium text-slate-600">In 1 hour</span>
-                    </li>
-                     <li className="flex justify-between items-center">
-                        <div>
-                            <p className="font-semibold text-slate-700">Peter Jones with Dr. Brown</p>
-                            <p className="text-sm text-slate-500">02:00 PM - Neurology</p>
-                        </div>
-                        <span className="text-sm font-medium text-slate-600">Today</span>
-                    </li>
-                </ul>
+    useEffect(() => {
+        const unsubscribe = auth.onAuthStateChanged(user => {
+            if (user) setHospitalId(user.uid);
+        });
+        return () => unsubscribe();
+    }, []);
+
+    useEffect(() => {
+        if (!hospitalId) return;
+
+        const fetchData = async () => {
+            try {
+                const today = new Date().toISOString().split('T')[0];
+                const currentMonth = new Date().getMonth();
+                const currentYear = new Date().getFullYear();
+
+                // Fetch data individually but concurrently to prevent one failure from breaking everything
+                const doctorsPromise = db.collection('users').doc(hospitalId).collection('doctors').get();
+                const patientsPromise = db.collection('users').doc(hospitalId).collection('patients').get();
+                const appsPromise = db.collection('users').doc(hospitalId).collection('appointments').where('date', '==', today).get();
+                // Removed .orderBy('time') to avoid requiring a composite index which causes the query to fail
+                const allAppsPromise = db.collection('users').doc(hospitalId).collection('appointments').where('date', '>=', today).orderBy('date').limit(5).get();
+                const invoicesPromise = db.collection('users').doc(hospitalId).collection('invoices').get();
+
+                try {
+                    const doctorsSnap = await doctorsPromise;
+                    setTotalDoctors(doctorsSnap.size);
+                } catch (e) { console.error("Error fetching doctors:", e); }
+
+                try {
+                    const patientsSnap = await patientsPromise;
+                    setTotalPatients(patientsSnap.size);
+                    const patientsData = patientsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Patient));
+                    const recent = patientsData
+                        .filter(p => p.status === PatientStatus.Admitted)
+                        .sort((a, b) => new Date(b.admittedDate).getTime() - new Date(a.admittedDate).getTime())
+                        .slice(0, 5);
+                    setRecentAdmissions(recent);
+                } catch (e) { console.error("Error fetching patients:", e); }
+
+                try {
+                    const appsSnap = await appsPromise;
+                    setAppointmentsToday(appsSnap.size);
+                } catch (e) { console.error("Error fetching today's apps:", e); }
+
+                try {
+                    const allAppsSnap = await allAppsPromise;
+                    const appsData = allAppsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
+                    setUpcomingAppointments(appsData);
+                } catch (e) { console.error("Error fetching upcoming apps:", e); }
+
+                try {
+                    const invoicesSnap = await invoicesPromise;
+                    let revenue = 0;
+                    invoicesSnap.forEach(doc => {
+                        const inv = doc.data() as Invoice;
+                        const invDate = new Date(inv.date);
+                        if (inv.status === 'Paid' && invDate.getMonth() === currentMonth && invDate.getFullYear() === currentYear) {
+                            revenue += inv.totalAmount;
+                        }
+                    });
+                    setRevenueThisMonth(revenue);
+                } catch (e) { console.error("Error fetching invoices:", e); }
+
+            } catch (error) {
+                console.error("Error fetching dashboard data:", error);
+            }
+        };
+
+        fetchData();
+    }, [hospitalId]);
+
+    const getPatientStatusColor = (status: PatientStatus) => {
+        switch (status) {
+            case PatientStatus.Admitted: return 'bg-green-100 text-green-800';
+            case PatientStatus.Discharged: return 'bg-slate-200 text-slate-800';
+            case PatientStatus.In_Treatment: return 'bg-blue-100 text-blue-800';
+            case PatientStatus.Observation: return 'bg-amber-100 text-amber-800';
+            default: return 'bg-gray-100 text-gray-800';
+        }
+    };
+
+    return (
+        <div>
+            <h1 className="text-3xl font-bold text-slate-900 mb-6">Dashboard Overview</h1>
+
+            {/* Stat Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <StatCard title="Total Doctors" value={totalDoctors.toString()} icon={<StethoscopeIcon className="h-6 w-6 text-white" />} color="bg-blue-500" />
+                <StatCard title="Total Patients" value={totalPatients.toString()} icon={<UsersIcon className="h-6 w-6 text-white" />} color="bg-green-500" />
+                <StatCard title="Appointments Today" value={appointmentsToday.toString()} icon={<CalendarIcon className="h-6 w-6 text-white" />} color="bg-amber-500" />
+                <StatCard title="Revenue (This Month)" value={`$${revenueThisMonth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} icon={<BillingIcon className="h-6 w-6 text-white" />} color="bg-primary-500" />
             </div>
-            
-            {/* Recent Patient Admissions */}
-            <div className="bg-white p-6 rounded-xl shadow-md">
-                <h2 className="text-xl font-bold text-slate-800 mb-4">Recent Admissions</h2>
-                <ul className="space-y-4">
-                    <li className="flex justify-between items-center">
-                        <div>
-                            <p className="font-semibold text-slate-700">Emily Clark</p>
-                            <p className="text-sm text-slate-500">Admitted to Room 302</p>
-                        </div>
-                        <span className="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded-full">Admitted</span>
-                    </li>
-                    <li className="flex justify-between items-center">
-                        <div>
-                            <p className="font-semibold text-slate-700">Michael Brown</p>
-                            <p className="text-sm text-slate-500">Discharged from Room 104</p>
-                        </div>
-                        <span className="px-2 py-1 text-xs font-semibold text-slate-800 bg-slate-200 rounded-full">Discharged</span>
-                    </li>
-                     <li className="flex justify-between items-center">
-                        <div>
-                            <p className="font-semibold text-slate-700">Sarah Wilson</p>
-                            <p className="text-sm text-slate-500">Admitted to ER</p>
-                        </div>
-                        <span className="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded-full">Admitted</span>
-                    </li>
-                </ul>
+
+            <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Upcoming Appointments */}
+                <div className="bg-white p-6 rounded-xl shadow-md">
+                    <h2 className="text-xl font-bold text-slate-800 mb-4">Upcoming Appointments</h2>
+                    {upcomingAppointments.length === 0 ? (
+                        <p className="text-slate-500">No upcoming appointments.</p>
+                    ) : (
+                        <ul className="space-y-4">
+                            {upcomingAppointments.map(app => (
+                                <li key={app.id} className="flex justify-between items-center">
+                                    <div>
+                                        <p className="font-semibold text-slate-700">{app.patientName} with {app.doctorName}</p>
+                                        <p className="text-sm text-slate-500">{new Date(app.date).toLocaleDateString()} at {app.time}</p>
+                                    </div>
+                                    <span className="text-sm font-medium text-slate-600">{app.status}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+
+                {/* Recent Patient Admissions */}
+                <div className="bg-white p-6 rounded-xl shadow-md">
+                    <h2 className="text-xl font-bold text-slate-800 mb-4">Recent Admissions</h2>
+                    {recentAdmissions.length === 0 ? (
+                        <p className="text-slate-500">No recent admissions.</p>
+                    ) : (
+                        <ul className="space-y-4">
+                            {recentAdmissions.map(patient => (
+                                <li key={patient.id} className="flex justify-between items-center">
+                                    <div>
+                                        <p className="font-semibold text-slate-700">{patient.name}</p>
+                                        <p className="text-sm text-slate-500">Admitted on {new Date(patient.admittedDate).toLocaleDateString()}</p>
+                                    </div>
+                                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getPatientStatusColor(patient.status)}`}>{patient.status}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
             </div>
         </div>
-    </div>
-  );
+    );
 };
 
 export default DashboardHome;

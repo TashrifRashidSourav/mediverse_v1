@@ -18,7 +18,6 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { name: 'Dashboard', path: '/patient/dashboard', icon: LayoutDashboardIcon, end: true },
   { name: 'My Profile', path: '/patient/dashboard/profile', icon: UserCircleIcon },
   { name: 'Find a Doctor', path: '/patient/dashboard/doctors', icon: StethoscopeIcon },
   { name: 'Hospitals', path: '/patient/dashboard/hospitals', icon: BuildingOfficeIcon },

@@ -16,7 +16,7 @@ const PatientManagement: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
     const [hospitalId, setHospitalId] = useState<string | null>(null);
-    const [permissionError, setPermissionError] = useState(false);
+    const [permissionError, setPermissionError] = useState<string | null>(null);
     
     const [lastVisible, setLastVisible] = useState<firebase.firestore.QueryDocumentSnapshot | null>(null);
     const [firstVisible, setFirstVisible] = useState<firebase.firestore.QueryDocumentSnapshot | null>(null);
@@ -81,7 +81,7 @@ const PatientManagement: React.FC = () => {
 
         } catch (error: any) {
             if (error.code === 'permission-denied') {
-                setPermissionError(true);
+                setPermissionError(`fetchPatients: ${error.message}`);
             }
             console.error("Error fetching patients:", error);
         }
@@ -116,7 +116,7 @@ const PatientManagement: React.FC = () => {
             handleCloseModal();
         } catch (error: any) {
              if (error.code === 'permission-denied') {
-                setPermissionError(true);
+                setPermissionError(`savePatient: ${error.message}`);
             }
             console.error("Error saving patient:", error);
         }
@@ -130,7 +130,7 @@ const PatientManagement: React.FC = () => {
                 fetchPatients('first');
             } catch (error: any) {
                 if (error.code === 'permission-denied') {
-                    setPermissionError(true);
+                    setPermissionError(`deletePatient: ${error.message}`);
                 }
                 console.error("Error deleting patient:", error);
             }
@@ -148,7 +148,7 @@ const PatientManagement: React.FC = () => {
     };
     
     if (permissionError) {
-        return <PermissionGuide firebaseConfig={firebaseConfig} />;
+        return <PermissionGuide firebaseConfig={firebaseConfig} errorDetails={permissionError} />;
     }
 
     return (

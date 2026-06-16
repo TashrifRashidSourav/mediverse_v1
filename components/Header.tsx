@@ -64,14 +64,14 @@ const Header: React.FC = () => {
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
           <Link to="/" className="flex items-center gap-2">
              <MedicalIcon className="h-8 w-8 text-primary" />
-            <span className="text-2xl font-bold text-slate-900">Mediverse</span>
+            <span className="text-2xl font-bold text-slate-900">Medicore</span>
           </Link>
           <div className="hidden md:flex items-center gap-6">
             <nav className="flex items-center space-x-8">
               <Link to="/hospitals" className="text-slate-600 hover:text-primary transition-colors">Hospitals</Link>
               <Link to="/doctors" className="text-slate-600 hover:text-primary transition-colors">Doctors</Link>
               <button onClick={() => handleNavAndScroll('pricing')} className="text-slate-600 hover:text-primary transition-colors">Pricing</button>
-              <button onClick={() => handleNavAndScroll('contact')} className="text-slate-600 hover:text-primary transition-colors">Contact</button>
+              <Link to="/contact" className="text-slate-600 hover:text-primary transition-colors">Contact</Link>
             </nav>
             <div className="h-6 w-px bg-slate-200" />
             <div className="flex items-center gap-4">

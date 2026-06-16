@@ -191,3 +191,21 @@ export interface ChatMessage {
   senderName: string;
   timestamp: any;
 }
+
+export interface InvoiceItem {
+    description: string;
+    amount: number;
+}
+
+export interface Invoice {
+    id: string;
+    hospitalId: string;
+    patientId: string;
+    patientName: string;
+    authUid?: string; // Global patient auth ID
+    date: string; // ISO string
+    items: InvoiceItem[];
+    totalAmount: number;
+    status: 'Pending' | 'Paid';
+    paymentMethod?: string;
+}

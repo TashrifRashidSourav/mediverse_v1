@@ -178,3 +178,4 @@ const PatientProfilePage: React.FC = () => {
 };
 
 export default PatientProfilePage;
+

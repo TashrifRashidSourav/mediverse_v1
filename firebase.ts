@@ -13,10 +13,8 @@ if (!firebase.apps.length) {
 const db = firebase.firestore();
 
 // TS-safe: compat supports experimentalForceLongPolling; remove useFetchStreams
-db.settings({
-  experimentalForceLongPolling: true,
-  // experimentalAutoDetectLongPolling: true, // optional; you can add this too
-});
+// Removing long polling to use faster WebSockets
+db.settings({});
 
 // Optional: persistence (comment out if it causes issues in your browser)
 firebase
@@ -27,8 +25,7 @@ firebase
   });
 
 // Debug logs while diagnosing; comment out when done.
-// @ts-ignore
-firebase.firestore.setLogLevel?.("debug");
+// Removed debug logging to improve performance
 
 // ---- Auth ----
 const auth = firebase.auth();

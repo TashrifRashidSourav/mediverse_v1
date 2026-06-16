@@ -1,6 +1,8 @@
 import React from 'react';
 import { Routes, Route, useParams, Navigate } from 'react-router-dom';
 import HomePage from './pages/HomePage';
+import AboutPage from './pages/AboutPage';
+import ContactPage from './pages/ContactPage';
 import SignUpPage from './pages/SignUpPage';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
@@ -55,6 +57,8 @@ const App: React.FC = () => {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
+      <Route path="/about" element={<AboutPage />} />
+      <Route path="/contact" element={<ContactPage />} />
       <Route path="/signup" element={<SignUpPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/pending-approval" element={<PendingApprovalPage />} />
@@ -100,7 +104,10 @@ const App: React.FC = () => {
       } />
 
       {/* Hospital Subdomain Sites */}
-      <Route path="/:subdomain" element={<HospitalSitePageWrapper />} />
+      <Route path="/:subdomain" element={<HospitalSitePageWrapper page="home" />} />
+      <Route path="/:subdomain/about" element={<HospitalSitePageWrapper page="about" />} />
+      <Route path="/:subdomain/doctors" element={<HospitalSitePageWrapper page="doctors" />} />
+      <Route path="/:subdomain/contact" element={<HospitalSitePageWrapper page="contact" />} />
 
       {/* Admin Dashboard Routes */}
       <Route path="/:subdomain/dashboard" element={
@@ -149,9 +156,13 @@ const App: React.FC = () => {
   );
 };
 
-const HospitalSitePageWrapper = () => {
+interface HospitalSitePageWrapperProps {
+    page?: 'home' | 'about' | 'doctors' | 'contact';
+}
+
+const HospitalSitePageWrapper: React.FC<HospitalSitePageWrapperProps> = ({ page = 'home' }) => {
     const { subdomain } = useParams<{ subdomain: string }>();
-    const reservedPaths = ['signup', 'login', 'patient', 'doctor-portal', 'book-appointment', 'meet', 'pending-approval', 'super-admin', 'payment', 'hospitals', 'doctors'];
+    const reservedPaths = ['signup', 'login', 'patient', 'doctor-portal', 'book-appointment', 'meet', 'pending-approval', 'super-admin', 'payment', 'hospitals', 'doctors', 'about', 'contact'];
 
     if (subdomain && reservedPaths.includes(subdomain)) {
         return <NotFoundPage />;
@@ -161,7 +172,7 @@ const HospitalSitePageWrapper = () => {
         return <NotFoundPage />;
     }
 
-    return <HospitalSitePage />;
+    return <HospitalSitePage page={page} />;
 };
 
 export default App;

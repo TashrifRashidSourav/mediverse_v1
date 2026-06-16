@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { MedicalIcon } from '../../components/icons/MedicalIcon';
 import { db, auth } from '../../firebase';
 import { Patient } from '../../types';
+import Header from '../../components/Header';
+import Footer from '../../components/Footer';
 
 const PatientSignUpPage: React.FC = () => {
     const navigate = useNavigate();
@@ -79,70 +81,74 @@ const PatientSignUpPage: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 py-12">
-            <div className="w-full max-w-md">
-                <div className="text-center mb-8">
-                    <Link to="/" className="inline-block">
-                        <MedicalIcon className="h-12 w-12 mx-auto mb-4 text-primary" />
-                    </Link>
-                    <h1 className="text-3xl font-bold text-slate-900">Create Your Patient Account</h1>
-                    <p className="text-slate-600">Your universal profile for all Mediverse hospitals.</p>
-                </div>
-                <div className="bg-white rounded-2xl shadow-xl p-8">
-                    {success ? (
-                        <div className="text-center">
-                            <h2 className="text-2xl font-bold text-primary mb-4">Registration Successful!</h2>
-                            <p className="text-slate-600 mb-6">Your account has been created. You can now log in.</p>
-                            <button onClick={() => navigate('/patient/login')} className="block w-full bg-primary text-white font-bold py-3 px-6 rounded-lg hover:bg-primary-700 transition-colors">
-                                Go to Login
-                            </button>
-                        </div>
-                    ) : (
-                        <form className="space-y-4" onSubmit={handleSubmit}>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label htmlFor="name" className="font-semibold text-slate-700 block mb-1.5">Full Name*</label>
-                                    <input type="text" name="name" value={formData.name} onChange={handleInputChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" required />
+        <div className="min-h-screen bg-slate-50 font-sans text-slate-800 flex flex-col">
+            <Header />
+            <main className="flex-grow flex items-center justify-center p-4 py-12">
+                <div className="w-full max-w-md my-8">
+                    <div className="text-center mb-8">
+                        <Link to="/" className="inline-block">
+                            <MedicalIcon className="h-12 w-12 mx-auto mb-4 text-primary" />
+                        </Link>
+                        <h1 className="text-3xl font-bold text-slate-900">Create Your Patient Account</h1>
+                        <p className="text-slate-600">Your universal profile for all Medicore hospitals.</p>
+                    </div>
+                    <div className="bg-white rounded-2xl shadow-xl p-8">
+                        {success ? (
+                            <div className="text-center">
+                                <h2 className="text-2xl font-bold text-primary mb-4">Registration Successful!</h2>
+                                <p className="text-slate-600 mb-6">Your account has been created. You can now log in.</p>
+                                <button onClick={() => navigate('/patient/login')} className="block w-full bg-primary text-white font-bold py-3 px-6 rounded-lg hover:bg-primary-700 transition-colors">
+                                    Go to Login
+                                </button>
+                            </div>
+                        ) : (
+                            <form className="space-y-4" onSubmit={handleSubmit}>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label htmlFor="name" className="font-semibold text-slate-700 block mb-1.5">Full Name*</label>
+                                        <input type="text" name="name" value={formData.name} onChange={handleInputChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" required />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="phone" className="font-semibold text-slate-700 block mb-1.5">Phone Number*</label>
+                                        <input type="tel" name="phone" value={formData.phone} onChange={handleInputChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" required />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="age" className="font-semibold text-slate-700 block mb-1.5">Age*</label>
+                                        <input type="number" name="age" value={formData.age} onChange={handleInputChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" required />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="gender" className="font-semibold text-slate-700 block mb-1.5">Gender*</label>
+                                        <select name="gender" value={formData.gender} onChange={handleInputChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" required>
+                                            <option value="Male">Male</option>
+                                            <option value="Female">Female</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </div>
                                 </div>
                                 <div>
-                                    <label htmlFor="phone" className="font-semibold text-slate-700 block mb-1.5">Phone Number*</label>
-                                    <input type="tel" name="phone" value={formData.phone} onChange={handleInputChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" required />
+                                    <label htmlFor="email" className="font-semibold text-slate-700 block mb-1.5">Email Address*</label>
+                                    <input type="email" name="email" value={formData.email} onChange={handleInputChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" required />
                                 </div>
                                 <div>
-                                    <label htmlFor="age" className="font-semibold text-slate-700 block mb-1.5">Age*</label>
-                                    <input type="number" name="age" value={formData.age} onChange={handleInputChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" required />
+                                    <label htmlFor="password" className="font-semibold text-slate-700 block mb-1.5">Create Password*</label>
+                                    <input type="password" name="password" value={formData.password} onChange={handleInputChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" required />
                                 </div>
                                 <div>
-                                    <label htmlFor="gender" className="font-semibold text-slate-700 block mb-1.5">Gender*</label>
-                                    <select name="gender" value={formData.gender} onChange={handleInputChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" required>
-                                        <option value="Male">Male</option>
-                                        <option value="Female">Female</option>
-                                        <option value="Other">Other</option>
-                                    </select>
+                                    <label htmlFor="confirmPassword" className="font-semibold text-slate-700 block mb-1.5">Confirm Password*</label>
+                                    <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleInputChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" required />
                                 </div>
-                            </div>
-                            <div>
-                                <label htmlFor="email" className="font-semibold text-slate-700 block mb-1.5">Email Address*</label>
-                                <input type="email" name="email" value={formData.email} onChange={handleInputChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" required />
-                            </div>
-                            <div>
-                                <label htmlFor="password" className="font-semibold text-slate-700 block mb-1.5">Create Password*</label>
-                                <input type="password" name="password" value={formData.password} onChange={handleInputChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" required />
-                            </div>
-                            <div>
-                                <label htmlFor="confirmPassword" className="font-semibold text-slate-700 block mb-1.5">Confirm Password*</label>
-                                <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleInputChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" required />
-                            </div>
 
-                            {error && <p className="text-red-600 text-sm">{error}</p>}
+                                {error && <p className="text-red-600 text-sm">{error}</p>}
 
-                            <button type="submit" disabled={isSubmitting} className="w-full bg-primary text-white font-bold py-3 px-6 rounded-lg hover:bg-primary-700 transition-opacity disabled:bg-primary-300 mt-6">
-                                {isSubmitting ? 'Creating Account...' : 'Sign Up'}
-                            </button>
-                        </form>
-                    )}
+                                <button type="submit" disabled={isSubmitting} className="w-full bg-primary text-white font-bold py-3 px-6 rounded-lg hover:bg-primary-700 transition-opacity disabled:bg-primary-300 mt-6">
+                                    {isSubmitting ? 'Creating Account...' : 'Sign Up'}
+                                </button>
+                            </form>
+                        )}
+                    </div>
                 </div>
-            </div>
+            </main>
+            <Footer />
         </div>
     );
 };

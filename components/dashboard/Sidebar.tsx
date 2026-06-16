@@ -6,8 +6,6 @@ import { StethoscopeIcon } from '../icons/StethoscopeIcon';
 import { UsersIcon } from '../icons/UsersIcon';
 import { CalendarIcon } from '../icons/CalendarIcon';
 import { BillingIcon } from '../icons/BillingIcon';
-import { InventoryIcon } from '../icons/InventoryIcon';
-import { ReportsIcon } from '../icons/ReportsIcon';
 import { GlobeIcon } from '../icons/GlobeIcon';
 import { XIcon } from '../icons/XIcon';
 import { MegaphoneIcon } from '../icons/MegaphoneIcon';
@@ -30,8 +28,6 @@ const navItems = [
   { name: 'Website', path: 'settings', icon: GlobeIcon },
   { name: 'Advertise', path: 'advertise', icon: MegaphoneIcon },
   { name: 'Billing', path: 'billing', icon: BillingIcon },
-  { name: 'Inventory', path: 'inventory', icon: InventoryIcon },
-  { name: 'Reports', path: 'reports', icon: ReportsIcon },
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, hospitalName, subdomain, logoUrl }) => {

@@ -112,7 +112,7 @@ const PatientPrescriptionsPage: React.FC = () => {
                     <ReportsIcon className="h-12 w-12 text-primary mx-auto mb-4" />
                     <h2 className="text-2xl font-bold text-slate-800">No Prescriptions Found</h2>
                     <p className="mt-2 text-slate-600 max-w-md mx-auto">
-                       Your digital prescriptions from Mediverse hospitals will appear here once they are issued by your doctor.
+                       Your digital prescriptions from Medicore hospitals will appear here once they are issued by your doctor.
                     </p>
                 </div>
             ) : filteredPrescriptions.length === 0 ? (

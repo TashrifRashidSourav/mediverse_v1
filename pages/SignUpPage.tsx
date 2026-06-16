@@ -208,7 +208,7 @@ const SignUpPage: React.FC = () => {
                           required
                         />
                         <span className="px-4 py-2.5 bg-slate-100 border border-l-0 border-slate-300 rounded-r-lg text-slate-500">
-                          .mediverse.app
+                          .Medicore.app
                         </span>
                       </div>
                     </div>

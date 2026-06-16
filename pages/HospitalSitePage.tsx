@@ -9,7 +9,11 @@ import GeneralTemplate from './templates/GeneralTemplate';
 import PremiumTemplate from './templates/PremiumTemplate';
 import GoldenTemplate from './templates/GoldenTemplate';
 
-const HospitalSitePage: React.FC = () => {
+interface HospitalSitePageProps {
+  page?: 'home' | 'about' | 'doctors' | 'contact';
+}
+
+const HospitalSitePage: React.FC<HospitalSitePageProps> = ({ page = 'home' }) => {
   const { subdomain } = useParams<{ subdomain: string }>();
   const [hospital, setHospital] = useState<User | 'loading' | 'not_found'>('loading');
 
@@ -42,7 +46,7 @@ const HospitalSitePage: React.FC = () => {
   }, [subdomain]);
 
   if (hospital === 'loading') {
-    return <div className="min-h-screen flex items-center justify-center bg-slate-100"><p>Loading hospital site...</p></div>;
+    return <div className="min-h-screen bg-slate-50"></div>;
   }
 
   if (hospital === 'not_found') {
@@ -52,14 +56,14 @@ const HospitalSitePage: React.FC = () => {
   // Render the correct template based on the hospital's plan
   switch (hospital.plan) {
     case PlanTier.General:
-      return <GeneralTemplate hospital={hospital} />;
+      return <GeneralTemplate hospital={hospital} page={page} />;
     case PlanTier.Premium:
-      return <PremiumTemplate hospital={hospital} />;
+      return <PremiumTemplate hospital={hospital} page={page} />;
     case PlanTier.Golden:
-      return <GoldenTemplate hospital={hospital} />;
+      return <GoldenTemplate hospital={hospital} page={page} />;
     default:
       // Fallback to the General template if plan is unknown
-      return <GeneralTemplate hospital={hospital} />;
+      return <GeneralTemplate hospital={hospital} page={page} />;
   }
 };
 

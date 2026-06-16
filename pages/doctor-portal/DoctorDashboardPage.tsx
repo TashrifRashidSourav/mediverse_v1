@@ -88,8 +88,13 @@ const DoctorDashboardPage: React.FC = () => {
                  <span className="font-semibold text-slate-700 hidden sm:block">{doctorProfile.name}</span>
                  <ChevronDownIcon className="h-4 w-4 text-slate-500" />
                </button>
-               <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl py-1 hidden group-hover:block z-50">
-                 <button onClick={handleLogout} className="w-full text-left block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">Log Out</button>
+               <div className="absolute right-0 pt-2 hidden group-hover:block z-50">
+                 <div className="w-48 bg-white rounded-xl shadow-2xl py-2 border border-slate-100 overflow-hidden">
+                   <button onClick={handleLogout} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                     Log Out
+                   </button>
+                 </div>
                </div>
             </div>
           </div>
@@ -99,7 +104,6 @@ const DoctorDashboardPage: React.FC = () => {
           <Outlet />
         </main>
       </div>
-      {showMediBot && <MediBot />}
     </div>
   );
 };

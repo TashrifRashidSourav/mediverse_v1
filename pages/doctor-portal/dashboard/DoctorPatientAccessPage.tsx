@@ -112,3 +112,4 @@ const DoctorPatientAccessPage: React.FC = () => {
 };
 
 export default DoctorPatientAccessPage;
+

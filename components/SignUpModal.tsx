@@ -106,12 +106,12 @@ const SignUpModal: React.FC<SignUpModalProps> = ({ isOpen, onClose, plan }) => {
                 <div className="bg-slate-100 p-4 rounded-lg inline-block">
                     <p className="text-slate-700">You can access your new site at:</p>
                     <a 
-                        href={`https://${formData.subdomain}.mediverse.app`} 
+                        href={`https://${formData.subdomain}.medicore.app`} 
                         target="_blank" 
                         rel="noopener noreferrer" 
                         className="text-lg font-bold text-primary hover:underline"
                     >
-                        {formData.subdomain}.mediverse.app
+                        {formData.subdomain}.medicore.app
                     </a>
                 </div>
                 <button onClick={onClose} className="mt-8 w-full bg-primary text-white font-bold py-3 px-6 rounded-lg hover:bg-primary-700 transition-colors">
@@ -135,7 +135,7 @@ const SignUpModal: React.FC<SignUpModalProps> = ({ isOpen, onClose, plan }) => {
                       <label htmlFor="subdomain" className="font-semibold text-slate-700 block mb-1.5">Your Website URL</label>
                       <div className="flex items-center">
                         <input type="text" id="subdomain" name="subdomain" value={formData.subdomain} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-r-0 border-slate-300 rounded-l-lg bg-slate-50 focus:ring-2 focus:ring-primary-300 focus:border-primary-500 transition" />
-                        <span className="px-4 py-2.5 bg-slate-100 border border-l-0 border-slate-300 rounded-r-lg text-slate-500">.mediverse.app</span>
+                        <span className="px-4 py-2.5 bg-slate-100 border border-l-0 border-slate-300 rounded-r-lg text-slate-500">.medicore.app</span>
                       </div>
                    </div>
                 </div>

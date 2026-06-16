@@ -19,6 +19,9 @@ const ChatManagement: React.FC = () => {
     const [isLoadingThreads, setIsLoadingThreads] = useState(true);
     const [isLoadingMessages, setIsLoadingMessages] = useState(false);
     const [hospitalId, setHospitalId] = useState<string | null>(null);
+    const [searchPhone, setSearchPhone] = useState('');
+    const [isSearching, setIsSearching] = useState(false);
+    const [searchError, setSearchError] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -82,12 +85,71 @@ const ChatManagement: React.FC = () => {
         });
     };
 
+    const handleSearchPatient = async () => {
+        if (!searchPhone.trim() || !hospitalId) return;
+        setIsSearching(true);
+        setSearchError('');
+        
+        try {
+            const patientSnapshot = await db.collection('patients').where('phone', '==', searchPhone.trim()).get();
+            if (patientSnapshot.empty) {
+                setSearchError('No patient found with this phone number.');
+                setIsSearching(false);
+                return;
+            }
+            
+            const patientDoc = patientSnapshot.docs[0];
+            const patientData = patientDoc.data();
+            const patientUid = patientDoc.id;
+            
+            const existingThread = threads.find(t => t.patientId === patientUid);
+            if (existingThread) {
+                setSelectedThread(existingThread);
+            } else {
+                const newThread: ChatThread = {
+                    patientId: patientUid,
+                    patientName: patientData.name || 'Unknown Patient',
+                    lastMessage: '',
+                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                };
+                setThreads(prev => [newThread, ...prev]);
+                setSelectedThread(newThread);
+            }
+            setSearchPhone('');
+        } catch (error) {
+            console.error("Error searching patient:", error);
+            setSearchError('Error searching for patient.');
+        } finally {
+            setIsSearching(false);
+        }
+    };
+
     return (
         <div className="h-[calc(100vh-100px)] flex bg-white rounded-xl shadow-md overflow-hidden">
             {/* Thread List */}
             <div className="w-1/3 border-r flex flex-col">
                 <div className="p-4 border-b">
-                    <h2 className="text-xl font-bold text-slate-800">Patient Chats</h2>
+                    <h2 className="text-xl font-bold text-slate-800 mb-4">Patient Chats</h2>
+                    <div className="flex flex-col gap-2">
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                placeholder="Search by phone number"
+                                value={searchPhone}
+                                onChange={(e) => setSearchPhone(e.target.value)}
+                                onKeyPress={e => e.key === 'Enter' && handleSearchPatient()}
+                                className="flex-grow px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-300 focus:border-primary-500 transition"
+                            />
+                            <button 
+                                onClick={handleSearchPatient}
+                                disabled={isSearching || !searchPhone.trim()}
+                                className="bg-primary text-white px-3 py-2 rounded-lg text-sm font-semibold disabled:bg-primary-300"
+                            >
+                                Search
+                            </button>
+                        </div>
+                        {searchError && <p className="text-red-500 text-xs">{searchError}</p>}
+                    </div>
                 </div>
                 <div className="flex-grow overflow-y-auto">
                     {isLoadingThreads ? <p className="p-4 text-slate-500">Loading chats...</p> : threads.length === 0 ? <p className="p-4 text-slate-500">No patient chats yet.</p> : (
@@ -154,3 +216,4 @@ const ChatManagement: React.FC = () => {
 };
 
 export default ChatManagement;
+

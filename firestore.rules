@@ -1,0 +1,174 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ============================
+    // 🔹 Helper Functions
+    // ============================
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function hasValidAuthUid() {
+      return request.resource.data.authUid is string && request.resource.data.authUid != "";
+    }
+
+    // ============================
+    // 🔹 Global Site Settings (Homepage & Super Admin)
+    // ============================
+    match /settings/{docId} {
+      allow read: if true;
+      // Super Admin can write during setup
+      allow write: if true;
+    }
+
+    // ============================
+    // 🔹 Hospital Admin Profiles & Sub-Collections
+    // ============================
+    match /users/{hospitalId} {
+      allow read: if true; // public hospital info
+      allow create: if isOwner(hospitalId);
+      allow update: if isOwner(hospitalId) ||
+                    (request.auth == null &&
+                     request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']));
+      allow delete: if isOwner(hospitalId);
+
+      // --- Doctors ---
+      match /doctors/{docId} {
+        allow read: if true;
+        allow create, update, delete: if isOwner(hospitalId);
+      }
+
+      // --- Patients (Hospital local records) ---
+      match /patients/{patientId} {
+        allow create: if isOwner(hospitalId) ||
+                       (signedIn() && request.resource.data.authUid == request.auth.uid);
+        allow read: if isOwner(hospitalId) ||
+                     (signedIn() && 'authUid' in resource.data &&
+                      resource.data.authUid == request.auth.uid) ||
+                     request.auth == null; // doctor portal read
+        allow update, delete: if isOwner(hospitalId);
+      }
+
+      // --- Prescriptions ---
+      match /prescriptions/{prescriptionId} {
+        allow read: if isOwner(hospitalId) ||
+                     (signedIn() && 'authUid' in resource.data &&
+                      resource.data.authUid == request.auth.uid) ||
+                     request.auth == null; // doctor portal read
+        allow create: if request.resource.data.hospitalId == hospitalId &&
+                       exists(/databases/$(database)/documents/users/$(hospitalId)/doctors/$(request.resource.data.doctorId)) &&
+                       hasValidAuthUid();
+        allow update, delete: if isOwner(hospitalId);
+      }
+
+      // --- Appointments ---
+      match /appointments/{appointmentId} {
+        allow read: if isOwner(hospitalId) ||
+                     (signedIn() && 'authUid' in resource.data &&
+                      resource.data.authUid == request.auth.uid) ||
+                     request.auth == null;
+        allow create: if isOwner(hospitalId) ||
+                       (signedIn() && hasValidAuthUid() &&
+                        request.resource.data.authUid == request.auth.uid);
+        allow update, delete: if isOwner(hospitalId);
+
+        // --- WebRTC (Video Calls) ---
+        match /webrtc/{doc=**} {
+          allow read, write: if true; // doctor + patient access
+        }
+      }
+
+      // --- Chat Threads ---
+      match /chats/{patientId} {
+        allow read: if isOwner(hospitalId) || isOwner(patientId);
+        allow create, update: if isOwner(hospitalId) || isOwner(patientId);
+        allow delete: if isOwner(hospitalId);
+
+        // --- Messages ---
+        match /messages/{messageId} {
+          allow read, create: if isOwner(hospitalId) || isOwner(patientId);
+          allow update, delete: if false; // immutable
+        }
+      }
+
+      // --- Invoices (New Billing Module) ---
+      match /invoices/{invoiceId} {
+        // FIXED: Split the read rules so Firebase's strict query engine doesn't block the Admin
+        allow read, create, update, delete: if isOwner(hospitalId);
+        
+        // Patients can read their own invoices
+        allow read: if signedIn() && 'authUid' in resource.data && resource.data.authUid == request.auth.uid;
+        
+        // Patients can only update the status to 'Paid' (from the Payment Gateway)
+        allow update: if signedIn() && 'authUid' in resource.data && resource.data.authUid == request.auth.uid 
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+                      && request.resource.data.status == 'Paid';
+      }
+      
+      // --- Inventory (Upcoming Feature) ---
+      match /inventory/{itemId} {
+        allow read, write: if isOwner(hospitalId);
+      }
+
+      // --- Transactions (Billing) ---
+      match /transactions/{transactionId} {
+        allow read, write: if isOwner(hospitalId);
+      }
+
+      // --- Hospital Website Settings ---
+      match /settings/{siteSettings} {
+        allow read: if true;
+        allow create, update, delete: if isOwner(hospitalId);
+      }
+    }
+
+    // ============================
+    // 🔹 Universal Patients Collection (Global Profiles)
+    // ============================
+    match /patients/{patientId} {
+      allow create: if isOwner(patientId);
+      allow read: if signedIn();
+      allow update: if isOwner(patientId);
+      allow delete: if false;
+    }
+
+    // ============================
+    // 🔹 Advertised Doctors (Public Directory)
+    // ============================
+    match /advertisedDoctors/{doctorId} {
+      allow read: if true;
+      allow create, update: if signedIn() &&
+                             request.auth.uid == request.resource.data.hospitalId;
+      allow delete: if signedIn() &&
+                     request.auth.uid == resource.data.hospitalId;
+    }
+
+    // ============================
+    // 🔹 Cross-Hospital Queries (Collection Groups)
+    // ============================
+    match /{path=**}/appointments/{appointmentId} {
+      allow read: if signedIn() &&
+                   'authUid' in resource.data &&
+                   resource.data.authUid == request.auth.uid ||
+                   request.auth == null; // doctor portal
+    }
+
+    match /{path=**}/prescriptions/{prescriptionId} {
+      allow read: if signedIn() &&
+                   'authUid' in resource.data &&
+                   resource.data.authUid == request.auth.uid ||
+                   request.auth == null; // doctor portal
+    }
+
+    match /{path=**}/invoices/{invoiceId} {
+      allow read: if signedIn() &&
+                   'authUid' in resource.data &&
+                   resource.data.authUid == request.auth.uid;
+    }
+  }
+}

@@ -31,3 +31,4 @@ const PaymentCancelPage: React.FC = () => {
     );
 };
 export default PaymentCancelPage;
+
