@@ -20,7 +20,7 @@ const Hero: React.FC<{
           className="text-4xl md:text-6xl font-extrabold text-slate-900 leading-tight"
           dangerouslySetInnerHTML={{ __html: title }}
         />
-        <p className="mt-6 max-w-2xl mx-auto text-lg md:text-xl text-slate-600">
+        <p className="mt-6 max-w-2xl mx-auto text-lg md:text-xl text-slate-700">
           {subtitle}
         </p>
         <div className="mt-10">

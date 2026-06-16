@@ -74,14 +74,14 @@ const DashboardPage: React.FC = () => {
         <header className="bg-white/80 backdrop-blur-lg sticky top-0 z-30 border-b border-slate-200">
           <div className="px-6 py-3 flex justify-between items-center">
             {/* Mobile Menu Toggle */}
-            <button onClick={() => setIsMobileSidebarOpen(true)} className="md:hidden text-slate-600">
+            <button aria-label="Open sidebar" onClick={() => setIsMobileSidebarOpen(true)} className="md:hidden text-slate-600">
               <MenuIcon className="h-6 w-6" />
             </button>
             <div className="hidden md:block"></div> {/* Spacer */}
             
             <div className="relative group">
-               <button className="flex items-center gap-2">
-                 <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-bold">
+               <button aria-label="User profile menu" className="flex items-center gap-2">
+                 <div aria-hidden="true" className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-bold">
                     {userProfile.hospitalName?.charAt(0).toUpperCase() || 'A'}
                  </div>
                  <span className="font-semibold text-slate-700 hidden sm:block">{userProfile.hospitalName}</span>

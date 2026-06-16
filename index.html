@@ -4,69 +4,15 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Medicore - Intelligent Medical Platform connecting hospitals, doctors, and patients." />
     <title>Medicore - Your Hospital's Digital Front Door</title>
 
-    <!-- Tailwind -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              primary: {
-                DEFAULT:'#0D9488','50':'#F0FDFA','100':'#CCFBF1','200':'#99F6E4',
-                '300':'#5EEAD4','400':'#2DD4BF','500':'#14B8A6','600':'#0D9488',
-                '700':'#0F766E','800':'#115E59','900':'#134E4A','950':'#042F2E'
-              },
-              gold: {
-                DEFAULT: '#c09a3e', '100': '#fef4e0', '700': '#a16207'
-              }
-            }
-          }
-        }
-      }
-    </script>
-
-    <!-- UMD globals for dependencies (no build step) -->
-    <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/react-router@6.23.1/umd/react-router.production.min.js"></script>
-    <script src="https://unpkg.com/react-router-dom@6.23.1/umd/react-router-dom.production.min.js"></script>
-
     <!-- PDF Generation Libraries -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
-    <!-- Firebase v8 UMD (compat, adds `firebase` to global scope) -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
-
-    <!-- In-browser JSX/TSX transform via Babel -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<script type="importmap">
-{
-  "imports": {
-    "@google/genai": "https://esm.run/@google/genai",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.4",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "firebase/": "https://aistudiocdn.com/firebase@^12.4.0/"
-  }
-}
-</script>
-<link rel="stylesheet" href="/index.css">
-</head>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  </head>
   <body class="bg-slate-50">
     <div id="root"></div>
-
-    <!--
-      This single script tag loads and compiles your main application entrypoint.
-      It uses the UMD globals loaded above for dependencies.
-    -->
-    <script type="text/babel" data-type="module" src="/index.tsx"></script>
   <script type="module" src="/index.tsx"></script>
 </body>
 </html>

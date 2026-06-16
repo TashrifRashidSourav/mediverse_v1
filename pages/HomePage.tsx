@@ -49,19 +49,13 @@ const HomePage: React.FC = () => {
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800">
       <Header />
       <main>
-        {isLoading ? (
-          <div className="py-32 text-center">Loading...</div>
-        ) : (
-          <>
-            <Hero 
-              title={landingPage?.heroTitle}
-              subtitle={landingPage?.heroSubtitle}
-              imageUrl={landingPage?.heroImageUrl}
-            />
-            <Features />
-            <Pricing plans={plans} />
-          </>
-        )}
+        <Hero 
+          title={landingPage?.heroTitle}
+          subtitle={landingPage?.heroSubtitle}
+          imageUrl={landingPage?.heroImageUrl}
+        />
+        <Features />
+        <Pricing plans={plans} />
       </main>
       <Footer />
     </div>

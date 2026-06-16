@@ -8,7 +8,7 @@ const FeatureCard: React.FC<{ title: string; description: string; icon: React.Re
       {icon}
     </div>
     <h3 className="text-xl font-bold text-slate-900 mb-3">{title}</h3>
-    <p className="text-slate-600 leading-relaxed">{description}</p>
+    <p className="text-slate-700 leading-relaxed">{description}</p>
   </div>
 );
 
@@ -36,7 +36,7 @@ const Features: React.FC = () => {
       <div className="container mx-auto px-6">
         <div className="text-center max-w-3xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-bold text-slate-900">Everything You Need for a Digital Presence</h2>
-          <p className="mt-4 text-lg text-slate-600">
+          <p className="mt-4 text-lg text-slate-700">
             From appointment booking to patient portals, Medicore provides the tools to enhance patient care and streamline operations.
           </p>
         </div>

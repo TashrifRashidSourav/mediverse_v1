@@ -30,9 +30,9 @@ const PricingCard: React.FC<{ plan: Plan; }> = ({ plan }) => {
       <div className="p-8 flex flex-col flex-grow">
           <div className="text-center">
             <span className="text-5xl font-extrabold text-slate-900">BDT {plan.price}</span>
-            <span className="text-slate-500 ml-1">/ month</span>
+            <span className="text-slate-700 ml-1">/ month</span>
           </div>
-          <ul className="mt-8 space-y-4 text-slate-600 flex-grow">
+          <ul className="mt-8 space-y-4 text-slate-700 flex-grow">
             {plan.features.map((feature, index) => (
               <li key={index} className="flex items-start">
                 <CheckIcon className="h-6 w-6 text-primary mr-3 flex-shrink-0" />
@@ -57,7 +57,7 @@ const Pricing: React.FC<PricingProps> = ({ plans }) => {
       <div className="container mx-auto px-6">
         <div className="text-center max-w-3xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-bold text-slate-900">Flexible Pricing for Hospitals of All Sizes</h2>
-          <p className="mt-4 text-lg text-slate-600">
+          <p className="mt-4 text-lg text-slate-700">
             Choose a plan that fits your needs and budget. Get started today and transform your hospital's digital experience.
           </p>
         </div>
