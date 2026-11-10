@@ -55,7 +55,7 @@ const PatientLoginPage: React.FC = () => {
                             <MedicalIcon className="h-12 w-12 mx-auto mb-4 text-primary" />
                         </Link>
                         <h1 className="text-3xl font-bold text-slate-900">Patient Portal Login</h1>
-                        <p className="text-slate-600">Access your universal Medicore account.</p>
+                        <p className="text-slate-600">Access your universal MediVerse account.</p>
                     </div>
                     <div className="bg-white rounded-2xl shadow-xl p-8">
                         <h2 className="text-2xl font-bold text-slate-800 text-center mb-6">Sign In</h2>
@@ -83,7 +83,7 @@ const PatientLoginPage: React.FC = () => {
                         </p>
                     </div>
                      <p className="text-center text-xs text-slate-500 mt-4">
-                        <Link to="/" className="hover:underline">Powered by Medicore</Link>
+                        <Link to="/" className="hover:underline">Powered by MediVerse</Link>
                     </p>
                 </div>
             </main>

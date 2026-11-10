@@ -16,7 +16,7 @@ const Features: React.FC = () => {
   const featuresData = [
     {
       title: 'Instant Subdomain',
-      description: 'Get a professional web address like "yourhospital.medicore.app" the moment you sign up.',
+      description: 'Get a professional web address like "yourhospital.mediverse.app" the moment you sign up.',
       icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9V3" /></svg>,
     },
     {
@@ -37,7 +37,7 @@ const Features: React.FC = () => {
         <div className="text-center max-w-3xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-bold text-slate-900">Everything You Need for a Digital Presence</h2>
           <p className="mt-4 text-lg text-slate-600">
-            From appointment booking to patient portals, Medicore provides the tools to enhance patient care and streamline operations.
+            From appointment booking to patient portals, MediVerse provides the tools to enhance patient care and streamline operations.
           </p>
         </div>
         <div className="mt-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">

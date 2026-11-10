@@ -90,7 +90,7 @@ const PatientSignUpPage: React.FC = () => {
                             <MedicalIcon className="h-12 w-12 mx-auto mb-4 text-primary" />
                         </Link>
                         <h1 className="text-3xl font-bold text-slate-900">Create Your Patient Account</h1>
-                        <p className="text-slate-600">Your universal profile for all Medicore hospitals.</p>
+                        <p className="text-slate-600">Your universal profile for all MediVerse hospitals.</p>
                     </div>
                     <div className="bg-white rounded-2xl shadow-xl p-8">
                         {success ? (
