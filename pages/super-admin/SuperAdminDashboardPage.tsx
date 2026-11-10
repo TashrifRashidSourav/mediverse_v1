@@ -6,6 +6,7 @@ import { MedicalIcon } from '../../components/icons/MedicalIcon';
 import { UsersIcon } from '../../components/icons/UsersIcon';
 import { BillingIcon } from '../../components/icons/BillingIcon';
 import { GlobeIcon } from '../../components/icons/GlobeIcon';
+import { MenuIcon } from '../../components/icons/MenuIcon';
 import { PLANS as defaultPlans } from '../../constants';
 
 type Tab = 'requests' | 'packages' | 'settings';
@@ -13,6 +14,7 @@ type Tab = 'requests' | 'packages' | 'settings';
 const SuperAdminDashboardPage: React.FC = () => {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<Tab>('requests');
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [requests, setRequests] = useState<User[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -80,32 +82,53 @@ const SuperAdminDashboardPage: React.FC = () => {
     }, [activeTab, fetchRequests, fetchPlans, fetchLandingPageSettings]);
 
     const handleApproval = async (userId: string, status: 'approved' | 'rejected') => {
-        await db.collection('users').doc(userId).update({ status });
-        fetchRequests();
+        try {
+            await db.collection('users').doc(userId).update({ status });
+            fetchRequests();
+        } catch (error) {
+            console.error('Error updating hospital status:', error);
+            alert('Could not update the hospital. Please try again.');
+        }
     };
     
     const handleSavePlans = async () => {
         if(window.confirm("Are you sure you want to save these plan changes? This will affect the public pricing page.")) {
-            await db.collection('settings').doc('plans').set({ all: plans });
-            alert("Plans updated successfully!");
+            try {
+                // Drop blank feature lines and make sure prices are numbers.
+                const cleaned = plans.map(p => ({
+                    ...p,
+                    price: Number(p.price) || 0,
+                    features: p.features.map(line => line.trim()).filter(Boolean),
+                }));
+                await db.collection('settings').doc('plans').set({ all: cleaned });
+                setPlans(cleaned);
+                alert("Plans updated successfully!");
+            } catch (error) {
+                console.error('Error saving plans:', error);
+                alert('Could not save the plans. Please try again.');
+            }
         }
     };
 
     const handleSaveSettings = async () => {
         if(window.confirm("Are you sure you want to save these landing page changes? This will affect the public homepage.")) {
-            await db.collection('settings').doc('landingPage').set(landingSettings);
-            alert("Landing page settings updated successfully!");
+            try {
+                await db.collection('settings').doc('landingPage').set(landingSettings);
+                alert("Landing page settings updated successfully!");
+            } catch (error) {
+                console.error('Error saving landing page settings:', error);
+                alert('Could not save the settings. Please try again.');
+            }
         }
     };
 
     const handlePlanChange = (index: number, field: keyof Plan, value: any) => {
-        const newPlans = [...plans];
-        if (field === 'features') {
-            newPlans[index][field] = value.split('\n');
-        } else {
-            (newPlans[index] as any)[field] = value;
-        }
-        setPlans(newPlans);
+        setPlans(prev => prev.map((plan, i) => {
+            if (i !== index) return plan;
+            if (field === 'features') return { ...plan, features: String(value).split('\n') };
+            if (field === 'price') return { ...plan, price: value === '' ? 0 : Number(value) };
+            return { ...plan, [field]: value };
+        }));
     };
 
     const handleLogout = () => {
@@ -120,9 +143,10 @@ const SuperAdminDashboardPage: React.FC = () => {
     ];
     
     return (
-        <div className="flex h-screen bg-slate-100 font-sans">
+        <div className="flex h-screen h-dvh bg-slate-100 font-sans">
+            {isSidebarOpen && <div className="fixed inset-0 bg-black/50 z-30 md:hidden" onClick={() => setIsSidebarOpen(false)} />}
             {/* Sidebar */}
-            <aside className="w-64 h-screen bg-slate-800 text-white flex flex-col">
+            <aside className={`fixed md:static inset-y-0 left-0 z-40 w-64 h-screen h-dvh bg-slate-800 text-white flex flex-col transition-transform duration-300 md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                 <div className="flex items-center gap-2 px-6 py-5 border-b border-slate-700">
                     <MedicalIcon className="h-7 w-7 text-primary" />
                     <span className="text-xl font-bold">Super Admin</span>
@@ -132,7 +156,7 @@ const SuperAdminDashboardPage: React.FC = () => {
                         {navItems.map(item => (
                              <li key={item.id} className="mb-1">
                                 <button
-                                    onClick={() => setActiveTab(item.id as Tab)}
+                                    onClick={() => { setActiveTab(item.id as Tab); setIsSidebarOpen(false); }}
                                     className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors ${activeTab === item.id ? 'bg-primary text-white' : ''}`}
                                 >
                                     <item.icon className="h-5 w-5" />
@@ -148,8 +172,11 @@ const SuperAdminDashboardPage: React.FC = () => {
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 flex flex-col">
-                <header className="bg-white/80 backdrop-blur-lg sticky top-0 z-30 border-b border-slate-200 p-4">
+            <main className="flex-1 flex flex-col min-w-0">
+                <header className="bg-white/80 backdrop-blur-lg sticky top-0 z-20 border-b border-slate-200 p-4 flex items-center gap-3">
+                    <button onClick={() => setIsSidebarOpen(true)} className="md:hidden text-slate-600" aria-label="Open menu">
+                        <MenuIcon className="h-6 w-6" />
+                    </button>
                     <h1 className="text-2xl font-bold text-slate-800">
                         {navItems.find(item => item.id === activeTab)?.name}
                     </h1>

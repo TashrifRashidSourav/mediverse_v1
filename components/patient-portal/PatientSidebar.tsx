@@ -40,7 +40,7 @@ const PatientSidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, patientName
 
   return (
     <>
-      <aside className={`fixed top-0 left-0 z-50 w-64 h-screen bg-slate-800 text-white flex flex-col transition-transform duration-300 md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed top-0 left-0 z-50 w-64 h-screen h-dvh bg-slate-800 text-white flex flex-col transition-transform duration-300 md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex items-center justify-between px-6 py-5 border-b border-slate-700">
           <Link to="/patient/dashboard" className="flex items-center gap-2">
             <MedicalIcon className="h-7 w-7 text-primary" />
@@ -57,7 +57,6 @@ const PatientSidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, patientName
               <li key={item.name} className="mb-1">
                 <NavLink
                   to={item.path}
-                  end={item.end}
                   onClick={handleLinkClick}
                   className={({ isActive }) => `${navLinkClasses} ${isActive ? activeLinkClasses : ''}`}
                 >

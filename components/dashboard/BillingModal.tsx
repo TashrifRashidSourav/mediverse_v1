@@ -3,6 +3,7 @@ import { Invoice, Patient } from '../../types';
 import { XIcon } from '../icons/XIcon';
 import { PlusIcon } from '../icons/PlusIcon';
 import { TrashIcon } from '../icons/TrashIcon';
+import { formatMoney } from '../../utils/format';
 
 interface BillingModalProps {
   isOpen: boolean;
@@ -35,13 +36,9 @@ const BillingModal: React.FC<BillingModalProps> = ({ isOpen, onClose, onSave, pa
   };
 
   const handleItemChange = (index: number, field: 'description' | 'amount', value: string) => {
-    const newItems = [...items];
-    if (field === 'amount') {
-      newItems[index][field] = Number(value);
-    } else {
-      newItems[index][field] = value;
-    }
-    setItems(newItems);
+    setItems(items.map((item, i) =>
+      i === index ? { ...item, [field]: field === 'amount' ? Number(value) : value } : item
+    ));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -55,15 +52,20 @@ const BillingModal: React.FC<BillingModalProps> = ({ isOpen, onClose, onSave, pa
       return;
     }
 
-    const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
+    const keptItems = items.filter(item => item.description.trim() !== '');
+    if (keptItems.length === 0) {
+      setIsSubmitting(false);
+      return;
+    }
+    const totalAmount = keptItems.reduce((sum, item) => sum + item.amount, 0);
 
     const invoiceData: Omit<Invoice, 'id'> = {
       hospitalId: '', // Will be set by parent
       patientId: patient.id,
       patientName: patient.name,
-      authUid: patient.authUid,
+      ...(patient.authUid ? { authUid: patient.authUid } : {}),
       date: new Date().toISOString(),
-      items: items.filter(item => item.description.trim() !== ''),
+      items: keptItems,
       totalAmount,
       status,
     };
@@ -159,7 +161,7 @@ const BillingModal: React.FC<BillingModalProps> = ({ isOpen, onClose, onSave, pa
                 </div>
                 <div className="text-right">
                   <span className="text-slate-500 font-medium">Total Amount</span>
-                  <div className="text-2xl font-bold text-slate-900">${total.toFixed(2)}</div>
+                  <div className="text-2xl font-bold text-slate-900">{formatMoney(total)}</div>
                 </div>
               </div>
 

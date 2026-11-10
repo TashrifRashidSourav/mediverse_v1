@@ -28,6 +28,7 @@ const GoldenTemplate: React.FC<TemplateProps> = ({ hospital, page = 'home' }) =>
   const [settings, setSettings] = useState<SiteSettings | null>(null);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -84,7 +85,7 @@ const GoldenTemplate: React.FC<TemplateProps> = ({ hospital, page = 'home' }) =>
           <div className="container mx-auto px-6 py-5 flex justify-between items-center">
             <Link to={`/${hospital.subdomain}`} className="flex items-center gap-3">
                {settings?.logoUrl ? (
-                  <img src={settings.logoUrl} alt={`${hospital.hospitalName} Logo`} className="h-10"/>
+                  <img loading="lazy" decoding="async" src={settings.logoUrl} alt={`${hospital.hospitalName} Logo`} className="h-10"/>
                ) : (
                   <MedicalIcon className="h-9 w-9 text-white" />
                )}
@@ -95,14 +96,39 @@ const GoldenTemplate: React.FC<TemplateProps> = ({ hospital, page = 'home' }) =>
               <Link to={`/${hospital.subdomain}/about`} className={`hover:opacity-80 transition-opacity ${page === 'about' ? 'font-bold' : ''}`}>About Us</Link>
               <Link to={`/${hospital.subdomain}/doctors`} className={`hover:opacity-80 transition-opacity ${page === 'doctors' ? 'font-bold' : ''}`}>Doctors</Link>
               <Link to={`/${hospital.subdomain}/contact`} className={`hover:opacity-80 transition-opacity ${page === 'contact' ? 'font-bold' : ''}`}>Contact</Link>
+              {page !== 'home' && (
+                <Link to={appointmentLink} style={{ backgroundColor: buttonColor }} className="px-5 py-2 rounded-full text-base font-bold hover:opacity-90 transition-opacity">Book Appointment</Link>
+              )}
             </nav>
+            <button
+              type="button"
+              className="md:hidden p-1"
+              aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen(o => !o)}
+            >
+              <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {menuOpen
+                  ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />}
+              </svg>
+            </button>
           </div>
+          {menuOpen && (
+            <nav className="md:hidden bg-slate-900/95 px-6 pb-6 pt-2 flex flex-col gap-4 text-lg" onClick={() => setMenuOpen(false)}>
+              <Link to={`/${hospital.subdomain}`}>Home</Link>
+              <Link to={`/${hospital.subdomain}/about`}>About Us</Link>
+              <Link to={`/${hospital.subdomain}/doctors`}>Doctors</Link>
+              <Link to={`/${hospital.subdomain}/contact`}>Contact</Link>
+              <Link to={appointmentLink} style={{ backgroundColor: buttonColor }} className="text-center px-5 py-2.5 rounded-full font-bold">Book Appointment</Link>
+            </nav>
+          )}
         </header>
 
         {page === 'home' && (
             <section className="relative h-screen flex items-center justify-center text-white">
               <div className="absolute inset-0 bg-black z-0">
-                  <img src={settings?.heroImageUrl || "https://picsum.photos/seed/golden-hero/1920/1080"} alt="Modern hospital interior" className="w-full h-full object-cover opacity-50"/>
+                  <img src={settings?.heroImageUrl || "/images/hero.jpg"} alt="Modern hospital interior" className="w-full h-full object-cover opacity-50"/>
               </div>
               <div className="relative z-10 text-center px-4">
                 <h1 className="text-5xl md:text-7xl font-extrabold leading-tight tracking-tight">
@@ -150,7 +176,7 @@ const GoldenTemplate: React.FC<TemplateProps> = ({ hospital, page = 'home' }) =>
                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                           {doctors.map(doctor => (
                              <div key={doctor.id} className="text-center">
-                                 <img src={doctor.imageUrl || `https://i.pravatar.cc/300?u=${doctor.id}`} alt={doctor.name} className="w-48 h-48 rounded-full mx-auto object-cover shadow-lg mb-4"/>
+                                 <img loading="lazy" decoding="async" src={doctor.imageUrl || "/images/doctor-placeholder.svg"} alt={doctor.name} className="w-48 h-48 rounded-full mx-auto object-cover shadow-lg mb-4"/>
                                  <h3 className="text-xl font-bold">{doctor.name}</h3>
                                  <p style={{color: themeColor}} className="font-semibold">{doctor.specialization}</p>
                                  <p style={{ color: lightTextColor }} >{doctor.qualifications}</p>
@@ -206,7 +232,7 @@ const GoldenTemplate: React.FC<TemplateProps> = ({ hospital, page = 'home' }) =>
                 <div className="flex flex-col items-start md:items-start text-left">
                     <Link to={`/${hospital.subdomain}`} className="flex items-center gap-3 mb-6">
                         {settings?.logoUrl ? (
-                            <img src={settings.logoUrl} alt={`${hospital.hospitalName} Logo`} className="h-10 brightness-0 invert opacity-90"/>
+                            <img loading="lazy" decoding="async" src={settings.logoUrl} alt={`${hospital.hospitalName} Logo`} className="h-10 brightness-0 invert opacity-90"/>
                         ) : (
                             <MedicalIcon className="h-10 w-10 text-white" />
                         )}
@@ -272,7 +298,7 @@ const GoldenTemplate: React.FC<TemplateProps> = ({ hospital, page = 'home' }) =>
                   </div>
                 )}
 
-                <p className="text-sm opacity-60">Site by <span className="font-semibold text-white">Medicore</span></p>
+                <p className="text-sm opacity-60">Site by <span className="font-semibold text-white">MediVerse</span></p>
             </div>
           </div>
         </footer>

@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { db, auth, firebase } from '../../firebase';
 import { Invoice, Patient } from '../../types';
 import { PlusIcon } from '../../components/icons/PlusIcon';
 import BillingModal from '../../components/dashboard/BillingModal';
 import PermissionGuide from '../../components/dashboard/PermissionGuide';
 import { firebaseConfig } from '../../firebaseConfig';
+import { formatMoney } from '../../utils/format';
 
 const BillingPage: React.FC = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -28,7 +29,7 @@ const BillingPage: React.FC = () => {
   const fetchInvoices = useCallback(async () => {
     if (!hospitalId) return;
     setIsLoading(true);
-    setPermissionError(false);
+    setPermissionError(null);
     try {
       const snapshot = await db.collection('users').doc(hospitalId).collection('invoices').orderBy('date', 'desc').get();
       const invoicesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Invoice));
@@ -83,6 +84,7 @@ const BillingPage: React.FC = () => {
         setPermissionError(`saveInvoice: ${error.message}`);
       }
       console.error("Error saving invoice:", error);
+      alert("Could not save the invoice. Please try again.");
     }
   };
 
@@ -97,14 +99,11 @@ const BillingPage: React.FC = () => {
         setPermissionError(`updateInvoice: ${error.message}`);
       }
       console.error("Error updating invoice status:", error);
+      alert("Could not update the invoice status. Please try again.");
     }
   };
 
-  if (permissionError) {
-    return <PermissionGuide firebaseConfig={firebaseConfig} errorDetails={permissionError} />;
-  }
-
-  const filteredAndSortedInvoices = React.useMemo(() => {
+  const filteredAndSortedInvoices = useMemo(() => {
     let result = [...invoices];
     
     if (searchQuery) {
@@ -127,6 +126,11 @@ const BillingPage: React.FC = () => {
     
     return result;
   }, [invoices, searchQuery, sortBy]);
+
+  if (permissionError) {
+    return <PermissionGuide firebaseConfig={firebaseConfig} errorDetails={permissionError} />;
+  }
+
 
   return (
     <div>
@@ -197,7 +201,7 @@ const BillingPage: React.FC = () => {
                         {invoice.items.length} item(s)
                       </div>
                     </td>
-                    <td className="p-4 font-bold text-slate-800">${invoice.totalAmount.toFixed(2)}</td>
+                    <td className="p-4 font-bold text-slate-800">{formatMoney(invoice.totalAmount)}</td>
                     <td className="p-4">
                       <span className={`px-2 py-1 text-xs font-semibold rounded-full ${invoice.status === 'Paid' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>
                         {invoice.status}

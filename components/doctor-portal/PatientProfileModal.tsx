@@ -71,7 +71,7 @@ const PatientProfileModal: React.FC<PatientProfileModalProps> = ({ isOpen, onClo
             <div className="space-y-4">
                <div className="flex items-center gap-4">
                     <div className="w-20 h-20 rounded-full bg-slate-100 flex-shrink-0 flex items-center justify-center overflow-hidden">
-                        {patient.profilePictureUrl ? <img src={patient.profilePictureUrl} alt="Profile" className="w-full h-full object-cover" /> : <UserCircleIcon className="h-16 w-16 text-slate-400"/>}
+                        {patient.profilePictureUrl ? <img loading="lazy" decoding="async" src={patient.profilePictureUrl} alt="Profile" className="w-full h-full object-cover" /> : <UserCircleIcon className="h-16 w-16 text-slate-400"/>}
                     </div>
                     <div>
                         <h3 className="text-2xl font-bold text-slate-800">{patient.name}</h3>

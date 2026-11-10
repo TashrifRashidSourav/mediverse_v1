@@ -67,22 +67,32 @@ const ChatManagement: React.FC = () => {
     const handleSendMessage = async () => {
         if(!input.trim() || !selectedThread || !hospitalId) return;
 
+        const text = input.trim();
         const messageData = {
-            text: input,
+            text,
             senderId: hospitalId,
             senderName: 'Hospital Support',
             timestamp: firebase.firestore.FieldValue.serverTimestamp(),
         };
-        
+
         setInput('');
-        
+
         const chatRef = db.collection('users').doc(hospitalId).collection('chats').doc(selectedThread.patientId);
-        
-        await chatRef.collection('messages').add(messageData);
-        await chatRef.update({
-            lastMessage: input,
-            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-        });
+
+        try {
+            // set+merge (not update) so a brand-new thread started from the phone search
+            // is actually created and becomes visible to the patient.
+            await chatRef.set({
+                patientName: selectedThread.patientName,
+                lastMessage: text,
+                lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+            }, { merge: true });
+            await chatRef.collection('messages').add(messageData);
+        } catch (error) {
+            console.error('Error sending message:', error);
+            setInput(text);
+            alert('Could not send your message. Please try again.');
+        }
     };
 
     const handleSearchPatient = async () => {
@@ -125,9 +135,9 @@ const ChatManagement: React.FC = () => {
     };
 
     return (
-        <div className="h-[calc(100vh-100px)] flex bg-white rounded-xl shadow-md overflow-hidden">
+        <div className="h-[calc(100dvh-100px)] flex bg-white rounded-xl shadow-md overflow-hidden">
             {/* Thread List */}
-            <div className="w-1/3 border-r flex flex-col">
+            <div className={`${selectedThread ? 'hidden md:flex' : 'flex'} w-full md:w-1/3 border-r flex-col`}>
                 <div className="p-4 border-b">
                     <h2 className="text-xl font-bold text-slate-800 mb-4">Patient Chats</h2>
                     <div className="flex flex-col gap-2">
@@ -137,7 +147,7 @@ const ChatManagement: React.FC = () => {
                                 placeholder="Search by phone number"
                                 value={searchPhone}
                                 onChange={(e) => setSearchPhone(e.target.value)}
-                                onKeyPress={e => e.key === 'Enter' && handleSearchPatient()}
+                                onKeyDown={e => e.key === 'Enter' && handleSearchPatient()}
                                 className="flex-grow px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-300 focus:border-primary-500 transition"
                             />
                             <button 
@@ -168,10 +178,11 @@ const ChatManagement: React.FC = () => {
             </div>
 
             {/* Message View */}
-            <div className="w-2/3 flex flex-col">
+            <div className={`${selectedThread ? 'flex' : 'hidden md:flex'} w-full md:w-2/3 flex-col`}>
                 {selectedThread ? (
                     <>
-                        <div className="p-4 border-b bg-slate-50">
+                        <div className="p-4 border-b bg-slate-50 flex items-center gap-3">
+                            <button onClick={() => setSelectedThread(null)} className="md:hidden text-slate-600 font-semibold" aria-label="Back to chats">&larr;</button>
                             <h3 className="font-bold text-lg text-slate-800">{selectedThread.patientName}</h3>
                         </div>
                         <div className="flex-grow p-4 overflow-y-auto bg-slate-100">
@@ -195,7 +206,7 @@ const ChatManagement: React.FC = () => {
                                     type="text"
                                     value={input}
                                     onChange={e => setInput(e.target.value)}
-                                    onKeyPress={e => e.key === 'Enter' && handleSendMessage()}
+                                    onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
                                     placeholder="Type your reply..."
                                     className="flex-grow px-4 py-2 border border-slate-300 rounded-full focus:ring-2 focus:ring-primary-300 focus:border-primary-500 transition"
                                 />

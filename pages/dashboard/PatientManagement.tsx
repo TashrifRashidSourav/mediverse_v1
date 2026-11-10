@@ -7,6 +7,7 @@ import { EditIcon } from '../../components/icons/EditIcon';
 import { TrashIcon } from '../../components/icons/TrashIcon';
 import PermissionGuide from '../../components/dashboard/PermissionGuide';
 import { firebaseConfig } from '../../firebaseConfig';
+import { formatLocalDate } from '../../utils/date';
 
 const PAGE_SIZE = 15;
 
@@ -34,7 +35,7 @@ const PatientManagement: React.FC = () => {
     const fetchPatients = useCallback(async (direction: 'next' | 'prev' | 'first' = 'first') => {
         if (!hospitalId) return;
         setIsLoading(true);
-        setPermissionError(false);
+        setPermissionError(null);
 
         let query: firebase.firestore.Query;
         const baseQuery = db.collection('users').doc(hospitalId).collection('patients').orderBy('name');
@@ -119,6 +120,7 @@ const PatientManagement: React.FC = () => {
                 setPermissionError(`savePatient: ${error.message}`);
             }
             console.error("Error saving patient:", error);
+            alert('Could not save the patient. Please try again.');
         }
     };
     
@@ -133,6 +135,7 @@ const PatientManagement: React.FC = () => {
                     setPermissionError(`deletePatient: ${error.message}`);
                 }
                 console.error("Error deleting patient:", error);
+                alert('Could not delete the patient. Please try again.');
             }
         }
     };
@@ -193,7 +196,7 @@ const PatientManagement: React.FC = () => {
                                         <td className="p-4">
                                             <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(patient.status)}`}>{patient.status}</span>
                                         </td>
-                                        <td className="p-4 text-slate-700">{new Date(patient.admittedDate).toLocaleDateString()}</td>
+                                        <td className="p-4 text-slate-700">{formatLocalDate(patient.admittedDate)}</td>
                                         <td className="p-4">
                                             <div className="flex items-center gap-2">
                                                 <button onClick={() => handleOpenModal(patient)} className="text-slate-500 hover:text-primary"><EditIcon className="h-5 w-5" /></button>

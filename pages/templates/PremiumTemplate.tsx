@@ -55,16 +55,16 @@ const PremiumTemplate: React.FC<TemplateProps> = ({ hospital, page = 'home' }) =
     <div className="bg-slate-50 font-sans min-h-screen flex flex-col">
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-lg sticky top-0 z-40 border-b border-slate-200">
-        <div className="container mx-auto px-6 py-4 flex justify-between items-center">
+        <div className="container mx-auto px-6 py-4 flex flex-col md:flex-row gap-3 justify-between items-center">
           <Link to={`/${hospital.subdomain}`} className="flex items-center gap-3">
             {settings.logoUrl ? (
-                <img src={settings.logoUrl} alt={`${hospital.hospitalName} Logo`} className="h-10 max-h-10 object-contain"/>
+                <img loading="lazy" decoding="async" src={settings.logoUrl} alt={`${hospital.hospitalName} Logo`} className="h-10 max-h-10 object-contain"/>
             ) : (
                 <MedicalIcon className="h-8 w-8 text-blue-600" />
             )}
             <span className="text-2xl font-bold text-slate-900">{hospital.hospitalName}</span>
           </Link>
-          <nav className="flex items-center gap-6">
+          <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
             <Link to={`/${hospital.subdomain}`} className={`font-semibold ${page === 'home' ? 'text-blue-600' : 'text-slate-600 hover:text-blue-600'}`}>Home</Link>
             <Link to={`/${hospital.subdomain}/about`} className={`font-semibold ${page === 'about' ? 'text-blue-600' : 'text-slate-600 hover:text-blue-600'}`}>About</Link>
             <Link to={`/${hospital.subdomain}/doctors`} className={`font-semibold ${page === 'doctors' ? 'text-blue-600' : 'text-slate-600 hover:text-blue-600'}`}>Our Doctors</Link>
@@ -77,7 +77,7 @@ const PremiumTemplate: React.FC<TemplateProps> = ({ hospital, page = 'home' }) =
       {/* Hero Section - Only on Home */}
       {page === 'home' && (
           <section className="relative h-96 bg-gray-400">
-            <img src={settings.heroImageUrl || "https://picsum.photos/seed/premium-hero/1600/800"} alt="Hospital building" className="w-full h-full object-cover"/>
+            <img src={settings.heroImageUrl || "/images/hero.jpg"} alt="Hospital building" className="w-full h-full object-cover"/>
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
               <div className="text-center text-white">
                 <h1 className="text-5xl font-extrabold">Excellence in Healthcare</h1>
@@ -112,7 +112,7 @@ const PremiumTemplate: React.FC<TemplateProps> = ({ hospital, page = 'home' }) =
                     {doctors.map(doctor => (
                       <div key={doctor.id} className="bg-white p-8 rounded-xl shadow-md text-center transform hover:-translate-y-1 transition-transform">
                           <div className="w-24 h-24 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden mx-auto mb-4">
-                              {doctor.imageUrl ? <img src={doctor.imageUrl} alt={doctor.name} className="w-full h-full object-cover" /> : <UserCircleIcon className="h-16 w-16 text-slate-400" />}
+                              {doctor.imageUrl ? <img loading="lazy" decoding="async" src={doctor.imageUrl} alt={doctor.name} className="w-full h-full object-cover" /> : <UserCircleIcon className="h-16 w-16 text-slate-400" />}
                           </div>
                         <h3 className="text-2xl font-bold text-slate-900">{doctor.name}</h3>
                         <p className="mt-2 text-blue-600 font-semibold">{doctor.specialization}</p>
@@ -156,7 +156,7 @@ const PremiumTemplate: React.FC<TemplateProps> = ({ hospital, page = 'home' }) =
                 <div className="flex flex-col items-start text-left">
                     <Link to={`/${hospital.subdomain}`} className="flex items-center gap-3 mb-6">
                          {settings.logoUrl ? (
-                            <img src={settings.logoUrl} alt={`${hospital.hospitalName} Logo`} className="h-10 brightness-0 invert opacity-90"/>
+                            <img loading="lazy" decoding="async" src={settings.logoUrl} alt={`${hospital.hospitalName} Logo`} className="h-10 brightness-0 invert opacity-90"/>
                         ) : (
                             <MedicalIcon className="h-10 w-10 text-white" />
                         )}
@@ -211,7 +211,7 @@ const PremiumTemplate: React.FC<TemplateProps> = ({ hospital, page = 'home' }) =
 
             <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
                 <p className="text-sm opacity-60">&copy; {new Date().getFullYear()} {hospital.hospitalName}. All rights reserved.</p>
-                <p className="text-sm opacity-60">Powered by <span className="font-semibold text-white">Medicore</span></p>
+                <p className="text-sm opacity-60">Powered by <span className="font-semibold text-white">MediVerse</span></p>
             </div>
         </div>
       </footer>

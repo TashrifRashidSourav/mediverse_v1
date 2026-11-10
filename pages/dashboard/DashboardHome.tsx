@@ -4,7 +4,9 @@ import { StethoscopeIcon } from '../../components/icons/StethoscopeIcon';
 import { CalendarIcon } from '../../components/icons/CalendarIcon';
 import { BillingIcon } from '../../components/icons/BillingIcon';
 import { db, auth } from '../../firebase';
-import { Appointment, Patient, PatientStatus, Invoice } from '../../types';
+import { Appointment, AppointmentStatus, Patient, PatientStatus, Invoice } from '../../types';
+import { todayLocalISO, formatLocalDate } from '../../utils/date';
+import { formatMoney } from '../../utils/format';
 
 const StatCard: React.FC<{ title: string; value: string; icon: React.ReactNode; color: string; }> = ({ title, value, icon, color }) => (
     <div className="bg-white p-6 rounded-xl shadow-md flex items-center gap-4">
@@ -39,7 +41,7 @@ const DashboardHome: React.FC = () => {
 
         const fetchData = async () => {
             try {
-                const today = new Date().toISOString().split('T')[0];
+                const today = todayLocalISO(); // local day, not UTC
                 const currentMonth = new Date().getMonth();
                 const currentYear = new Date().getFullYear();
 
@@ -48,7 +50,7 @@ const DashboardHome: React.FC = () => {
                 const patientsPromise = db.collection('users').doc(hospitalId).collection('patients').get();
                 const appsPromise = db.collection('users').doc(hospitalId).collection('appointments').where('date', '==', today).get();
                 // Removed .orderBy('time') to avoid requiring a composite index which causes the query to fail
-                const allAppsPromise = db.collection('users').doc(hospitalId).collection('appointments').where('date', '>=', today).orderBy('date').limit(5).get();
+                const allAppsPromise = db.collection('users').doc(hospitalId).collection('appointments').where('date', '>=', today).orderBy('date').limit(20).get();
                 const invoicesPromise = db.collection('users').doc(hospitalId).collection('invoices').get();
 
                 try {
@@ -69,13 +71,18 @@ const DashboardHome: React.FC = () => {
 
                 try {
                     const appsSnap = await appsPromise;
-                    setAppointmentsToday(appsSnap.size);
+                    setAppointmentsToday(appsSnap.docs.filter(d => d.data().status !== AppointmentStatus.Cancelled).length);
                 } catch (e) { console.error("Error fetching today's apps:", e); }
 
                 try {
                     const allAppsSnap = await allAppsPromise;
                     const appsData = allAppsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
-                    setUpcomingAppointments(appsData);
+                    // Cancelled/completed visits are not "upcoming".
+                    setUpcomingAppointments(
+                        appsData
+                            .filter(a => a.status === AppointmentStatus.Scheduled || a.status === AppointmentStatus.Confirmed)
+                            .slice(0, 5)
+                    );
                 } catch (e) { console.error("Error fetching upcoming apps:", e); }
 
                 try {
@@ -118,7 +125,7 @@ const DashboardHome: React.FC = () => {
                 <StatCard title="Total Doctors" value={totalDoctors.toString()} icon={<StethoscopeIcon className="h-6 w-6 text-white" />} color="bg-blue-500" />
                 <StatCard title="Total Patients" value={totalPatients.toString()} icon={<UsersIcon className="h-6 w-6 text-white" />} color="bg-green-500" />
                 <StatCard title="Appointments Today" value={appointmentsToday.toString()} icon={<CalendarIcon className="h-6 w-6 text-white" />} color="bg-amber-500" />
-                <StatCard title="Revenue (This Month)" value={`$${revenueThisMonth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} icon={<BillingIcon className="h-6 w-6 text-white" />} color="bg-primary-500" />
+                <StatCard title="Revenue (This Month)" value={formatMoney(revenueThisMonth)} icon={<BillingIcon className="h-6 w-6 text-white" />} color="bg-primary-500" />
             </div>
 
             <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -133,7 +140,7 @@ const DashboardHome: React.FC = () => {
                                 <li key={app.id} className="flex justify-between items-center">
                                     <div>
                                         <p className="font-semibold text-slate-700">{app.patientName} with {app.doctorName}</p>
-                                        <p className="text-sm text-slate-500">{new Date(app.date).toLocaleDateString()} at {app.time}</p>
+                                        <p className="text-sm text-slate-500">{formatLocalDate(app.date)} at {app.time}</p>
                                     </div>
                                     <span className="text-sm font-medium text-slate-600">{app.status}</span>
                                 </li>
@@ -153,7 +160,7 @@ const DashboardHome: React.FC = () => {
                                 <li key={patient.id} className="flex justify-between items-center">
                                     <div>
                                         <p className="font-semibold text-slate-700">{patient.name}</p>
-                                        <p className="text-sm text-slate-500">Admitted on {new Date(patient.admittedDate).toLocaleDateString()}</p>
+                                        <p className="text-sm text-slate-500">Admitted on {formatLocalDate(patient.admittedDate)}</p>
                                     </div>
                                     <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getPatientStatusColor(patient.status)}`}>{patient.status}</span>
                                 </li>

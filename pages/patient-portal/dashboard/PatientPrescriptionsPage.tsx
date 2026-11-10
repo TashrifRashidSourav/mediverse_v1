@@ -3,6 +3,8 @@ import { db, auth } from '../../../firebase';
 import { Prescription } from '../../../types';
 import { ReportsIcon } from '../../../components/icons/ReportsIcon';
 import PrescriptionView from '../../../components/PrescriptionView';
+import { fetchPatientRecords } from '../../../utils/patientRecords';
+import { toLocalISODate } from '../../../utils/date';
 
 const PatientPrescriptionsPage: React.FC = () => {
     const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
@@ -25,22 +27,7 @@ const PatientPrescriptionsPage: React.FC = () => {
         setIsLoading(true);
         setError('');
         try {
-            const allPrescriptions: Prescription[] = [];
-            const hospitalsSnapshot = await db.collection('users').get();
-
-            const promises = hospitalsSnapshot.docs.map(hospitalDoc => 
-                db.collection('users').doc(hospitalDoc.id).collection('prescriptions')
-                    .where('authUid', '==', currentUser.uid)
-                    .get()
-            );
-
-            const results = await Promise.all(promises);
-
-            results.forEach(snapshot => {
-                snapshot.forEach(doc => {
-                    allPrescriptions.push({ id: doc.id, ...doc.data() } as Prescription);
-                });
-            });
+            const allPrescriptions = await fetchPatientRecords<Prescription>('prescriptions', currentUser.uid);
 
             // Sort by date descending
             allPrescriptions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -65,7 +52,7 @@ const PatientPrescriptionsPage: React.FC = () => {
 
     const filteredPrescriptions = prescriptions.filter(p => {
         const doctorNameMatch = p.doctorName.toLowerCase().includes(searchTerm.toLowerCase());
-        const dateMatch = !filterDate || p.date.startsWith(filterDate);
+        const dateMatch = !filterDate || toLocalISODate(new Date(p.date)) === filterDate;
         return doctorNameMatch && dateMatch;
     });
 
@@ -112,7 +99,7 @@ const PatientPrescriptionsPage: React.FC = () => {
                     <ReportsIcon className="h-12 w-12 text-primary mx-auto mb-4" />
                     <h2 className="text-2xl font-bold text-slate-800">No Prescriptions Found</h2>
                     <p className="mt-2 text-slate-600 max-w-md mx-auto">
-                       Your digital prescriptions from Medicore hospitals will appear here once they are issued by your doctor.
+                       Your digital prescriptions from MediVerse hospitals will appear here once they are issued by your doctor.
                     </p>
                 </div>
             ) : filteredPrescriptions.length === 0 ? (

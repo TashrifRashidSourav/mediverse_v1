@@ -8,6 +8,9 @@ import { DollarSignIcon } from '../../components/icons/DollarSignIcon';
 import { ClockIcon } from '../../components/icons/ClockIcon';
 import { XIcon } from '../../components/icons/XIcon';
 import { MedicalIcon } from '../../components/icons/MedicalIcon';
+import { formatMoney } from '../../utils/format';
+import { parseLocalDate, todayLocalISO } from '../../utils/date';
+import { slotId, toHHmm } from '../../utils/slots';
 
 
 // --- Appointment Booking Modal (included in this file) ---
@@ -24,6 +27,7 @@ const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = ({ isOpe
     const [date, setDate] = useState('');
     const [time, setTime] = useState('');
     const [timeSlots, setTimeSlots] = useState<string[]>([]);
+    const [bookedSlots, setBookedSlots] = useState<Set<string>>(new Set());
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
@@ -50,25 +54,46 @@ const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = ({ isOpe
     }, [isOpen]);
 
     useEffect(() => {
-        if (date && doctor.availability) {
-            const selectedDay = new Date(date).toLocaleDateString('en-US', { weekday: 'long' });
-            const availableSlot = doctor.availability.find(a => a.day === selectedDay);
-            
-            if (availableSlot) {
-                const slots: string[] = [];
-                let currentTime = new Date(`${date}T${availableSlot.startTime}`);
-                const endTime = new Date(`${date}T${availableSlot.endTime}`);
-                
-                while (currentTime < endTime) {
-                    slots.push(currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }));
-                    currentTime.setMinutes(currentTime.getMinutes() + 30); // 30-minute slots
-                }
-                setTimeSlots(slots);
-            } else {
-                setTimeSlots([]);
-            }
+        setTime('');
+        if (!date || !doctor.availability?.length) {
+            setTimeSlots([]);
+            return;
         }
+
+        // Parse as a LOCAL date (new Date("YYYY-MM-DD") is UTC and can pick the wrong weekday).
+        const selectedDay = parseLocalDate(date).toLocaleDateString('en-US', { weekday: 'long' });
+        const ranges = doctor.availability.filter(a => a.day === selectedDay);
+        const now = new Date();
+        const isToday = date === todayLocalISO();
+
+        const slots = new Set<string>();
+        ranges.forEach(range => {
+            const end = new Date(`${date}T${range.endTime}`);
+            for (let t = new Date(`${date}T${range.startTime}`); t < end; t = new Date(t.getTime() + 30 * 60000)) {
+                if (isToday && t <= now) continue; // don't offer times that have already passed
+                slots.add(toHHmm(t));
+            }
+        });
+        setTimeSlots(Array.from(slots).sort());
     }, [date, doctor.availability]);
+
+    // Slots other patients already took for this doctor on this date.
+    useEffect(() => {
+        setBookedSlots(new Set());
+        if (!date) return;
+        let cancelled = false;
+        db.collection('users').doc(hospital.uid).collection('slots')
+            .where('doctorId', '==', doctor.id)
+            .where('date', '==', date)
+            .get()
+            .then(snap => {
+                if (!cancelled) setBookedSlots(new Set(snap.docs.map(d => d.data().time as string)));
+            })
+            .catch(err => console.warn('Could not load booked slots', err?.code || err));
+        return () => { cancelled = true; };
+    }, [date, doctor.id, hospital.uid]);
+
+    const freeSlots = timeSlots.filter(slot => !bookedSlots.has(slot));
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -130,12 +155,31 @@ const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = ({ isOpe
                 appointmentType: appointmentType,
             };
 
-            await db.collection('users').doc(hospital.uid).collection('appointments').add(newAppointment);
+            const hospitalRef = db.collection('users').doc(hospital.uid);
+            const appointmentRef = hospitalRef.collection('appointments').doc();
+            const slotRef = hospitalRef.collection('slots').doc(slotId(doctor.id, date, time));
+
+            try {
+                // Reserve the slot and create the appointment atomically.
+                await db.runTransaction(async (transaction) => {
+                    const slotSnap = await transaction.get(slotRef);
+                    if (slotSnap.exists) throw new Error('SLOT_TAKEN');
+                    transaction.set(slotRef, { doctorId: doctor.id, date, time, authUid: user.uid, appointmentId: appointmentRef.id });
+                    transaction.set(appointmentRef, newAppointment);
+                });
+            } catch (txError: any) {
+                if (txError?.message === 'SLOT_TAKEN') throw txError;
+                if (txError?.code !== 'permission-denied') throw txError;
+                // Slot reservation rules are not deployed yet: still create the appointment.
+                await appointmentRef.set(newAppointment);
+            }
             setSuccess(true);
 
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
-            setError("Failed to book appointment. Please try again.");
+            setError(err?.message === 'SLOT_TAKEN'
+                ? "Sorry, that time slot was just booked by someone else. Please choose another."
+                : "Failed to book appointment. Please try again.");
         } finally {
             setIsSubmitting(false);
         }
@@ -181,13 +225,13 @@ const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = ({ isOpe
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="font-semibold text-slate-700 block mb-1.5">Select Date</label>
-                                    <input type="date" value={date} onChange={e => setDate(e.target.value)} min={new Date().toISOString().split('T')[0]} className="w-full px-3 py-2 border border-slate-300 rounded-lg" required />
+                                    <input type="date" value={date} onChange={e => setDate(e.target.value)} min={todayLocalISO()} className="w-full px-3 py-2 border border-slate-300 rounded-lg" required />
                                 </div>
                                 <div>
                                     <label className="font-semibold text-slate-700 block mb-1.5">Select Time</label>
-                                    <select value={time} onChange={e => setTime(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg" required disabled={timeSlots.length === 0}>
-                                        <option value="">{timeSlots.length > 0 ? 'Select a time' : 'No slots available'}</option>
-                                        {timeSlots.map(slot => <option key={slot} value={slot}>{slot}</option>)}
+                                    <select value={time} onChange={e => setTime(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg" required disabled={freeSlots.length === 0}>
+                                        <option value="">{!date ? 'Pick a date first' : freeSlots.length > 0 ? 'Select a time' : 'No slots available'}</option>
+                                        {freeSlots.map(slot => <option key={slot} value={slot}>{slot}</option>)}
                                     </select>
                                 </div>
                             </div>
@@ -260,7 +304,7 @@ const BookAppointmentPage: React.FC = () => {
                 <div className="container mx-auto px-6 py-4 flex justify-between items-center">
                     <Link to={`/${subdomain}`} className="flex items-center gap-2">
                          {settings.logoUrl ? (
-                            <img src={settings.logoUrl} alt={`${hospital?.hospitalName} Logo`} className="h-10 max-h-10 object-contain" />
+                            <img loading="lazy" decoding="async" src={settings.logoUrl} alt={`${hospital?.hospitalName} Logo`} className="h-10 max-h-10 object-contain" />
                         ) : (
                             <MedicalIcon className="h-8 w-8 text-primary"/>
                         )}
@@ -279,7 +323,7 @@ const BookAppointmentPage: React.FC = () => {
                             <div className="p-6">
                                 <div className="flex items-center gap-4">
                                     <div className="w-20 h-20 rounded-full bg-slate-100 flex-shrink-0 overflow-hidden">
-                                        {doctor.imageUrl ? <img src={doctor.imageUrl} alt={doctor.name} className="w-full h-full object-cover" /> : <UserCircleIcon className="h-full w-full text-slate-400" />}
+                                        {doctor.imageUrl ? <img loading="lazy" decoding="async" src={doctor.imageUrl} alt={doctor.name} className="w-full h-full object-cover" /> : <UserCircleIcon className="h-full w-full text-slate-400" />}
                                     </div>
                                     <div>
                                         <h2 className="text-xl font-bold text-slate-900">{doctor.name}</h2>
@@ -289,11 +333,11 @@ const BookAppointmentPage: React.FC = () => {
                                 </div>
                                 <div className="mt-4 space-y-2 text-sm text-slate-700 border-t pt-4">
                                     <div className="flex items-center gap-2"><BriefcaseIcon className="h-4 w-4 text-slate-500"/><span className="font-semibold">Experience:</span> {doctor.experience || 'N/A'}</div>
-                                    <div className="flex items-center gap-2"><DollarSignIcon className="h-4 w-4 text-slate-500"/><span className="font-semibold">Fees:</span> ${doctor.fees || 'N/A'}</div>
+                                    <div className="flex items-center gap-2"><DollarSignIcon className="h-4 w-4 text-slate-500"/><span className="font-semibold">Fees:</span> {doctor.fees ? formatMoney(doctor.fees, 0) : 'N/A'}</div>
                                     <div className="flex items-start gap-2"><ClockIcon className="h-4 w-4 text-slate-500 mt-0.5"/><span className="font-semibold">Availability:</span>
                                         <div>
                                             {doctor.availability && doctor.availability.length > 0
-                                                ? doctor.availability.map(a => <p key={a.id}>{a.day}</p>)
+                                                ? doctor.availability.map(a => <p key={a.id}>{a.day} {a.startTime}&ndash;{a.endTime}</p>)
                                                 : <p>Not available</p>}
                                         </div>
                                     </div>

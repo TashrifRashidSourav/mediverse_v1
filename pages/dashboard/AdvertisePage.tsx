@@ -129,7 +129,7 @@ const AdvertisePage: React.FC = () => {
                                     <li key={doctor.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                                         <div className="flex items-center gap-3">
                                             <div className="w-10 h-10 rounded-full bg-slate-200 flex-shrink-0 overflow-hidden">
-                                                {doctor.imageUrl ? <img src={doctor.imageUrl} alt={doctor.name} className="w-full h-full object-cover" /> : <UserCircleIcon className="h-6 w-6 text-slate-400 m-auto" />}
+                                                {doctor.imageUrl ? <img loading="lazy" decoding="async" src={doctor.imageUrl} alt={doctor.name} className="w-full h-full object-cover" /> : <UserCircleIcon className="h-6 w-6 text-slate-400 m-auto" />}
                                             </div>
                                             <div>
                                                 <p className="font-semibold">{doctor.name}</p>
@@ -156,7 +156,7 @@ const AdvertisePage: React.FC = () => {
                                     <li key={doctor.id} className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
                                          <div className="flex items-center gap-3">
                                             <div className="w-10 h-10 rounded-full bg-slate-200 flex-shrink-0 overflow-hidden">
-                                                {doctor.imageUrl ? <img src={doctor.imageUrl} alt={doctor.name} className="w-full h-full object-cover" /> : <UserCircleIcon className="h-6 w-6 text-slate-400 m-auto" />}
+                                                {doctor.imageUrl ? <img loading="lazy" decoding="async" src={doctor.imageUrl} alt={doctor.name} className="w-full h-full object-cover" /> : <UserCircleIcon className="h-6 w-6 text-slate-400 m-auto" />}
                                             </div>
                                             <div>
                                                 <p className="font-semibold">{doctor.name}</p>

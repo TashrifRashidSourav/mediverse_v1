@@ -17,6 +17,11 @@ service cloud.firestore {
       return request.resource.data.authUid is string && request.resource.data.authUid != "";
     }
 
+    // Walk-in patients added by the hospital have no app account, so authUid may be absent.
+    function hasOptionalAuthUid() {
+      return !('authUid' in request.resource.data) || hasValidAuthUid();
+    }
+
     // ============================
     // 🔹 Global Site Settings (Homepage & Super Admin)
     // ============================
@@ -62,7 +67,7 @@ service cloud.firestore {
                      request.auth == null; // doctor portal read
         allow create: if request.resource.data.hospitalId == hospitalId &&
                        exists(/databases/$(database)/documents/users/$(hospitalId)/doctors/$(request.resource.data.doctorId)) &&
-                       hasValidAuthUid();
+                       hasOptionalAuthUid();
         allow update, delete: if isOwner(hospitalId);
       }
 
@@ -81,6 +86,13 @@ service cloud.firestore {
         match /webrtc/{doc=**} {
           allow read, write: if true; // doctor + patient access
         }
+      }
+
+      // --- Booked time slots (one doc per doctor/date/time; stops double booking) ---
+      match /slots/{slotId} {
+        allow read: if true; // only reveals which times are already taken
+        allow create: if signedIn() && request.resource.data.authUid == request.auth.uid;
+        allow update, delete: if isOwner(hospitalId);
       }
 
       // --- Chat Threads ---

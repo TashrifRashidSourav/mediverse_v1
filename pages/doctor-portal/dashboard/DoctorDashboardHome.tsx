@@ -7,6 +7,7 @@ import { CalendarIcon } from '../../../components/icons/CalendarIcon';
 import { ClipboardIcon } from '../../../components/icons/ClipboardIcon';
 import { UserIcon } from '../../../components/icons/UserIcon';
 import { VideoCameraIcon } from '../../../components/icons/VideoCameraIcon';
+import { todayLocalISO } from '../../../utils/date';
 
 const DoctorDashboardHome: React.FC = () => {
     const { subdomain } = useParams<{ subdomain: string }>();
@@ -91,7 +92,7 @@ const DoctorDashboardHome: React.FC = () => {
         }
     };
     
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayLocalISO(); // local day, not UTC
     const todaysAppointments = appointments.filter(app => app.date === today);
     const upcomingAppointments = appointments.filter(app => app.date > today);
 
@@ -112,11 +113,13 @@ const DoctorDashboardHome: React.FC = () => {
                 <button onClick={() => handleViewProfile(app.patientId)} className="text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-md flex items-center gap-1.5">
                     <UserIcon className="h-4 w-4" /> Profile
                 </button>
-                 {app.appointmentType === 'Online' && app.status === 'Confirmed' && app.meetingLink ? (
+                 {app.appointmentType === 'Online' && app.status === 'Confirmed' && app.meetingLink && (
                     <Link to={app.meetingLink} className="text-sm font-semibold text-green-700 bg-green-100 hover:bg-green-200 px-3 py-1.5 rounded-md flex items-center gap-1.5">
                         <VideoCameraIcon className="h-4 w-4" /> Start Meeting
                     </Link>
-                ) : (
+                )}
+                {/* Always available: online consultations need a prescription too. */}
+                {app.patientId && (
                     <Link to={`/${subdomain}/doctor-portal/dashboard/prescription/${app.patientId}`} className="text-sm font-semibold text-primary-700 bg-primary-100 hover:bg-primary-200 px-3 py-1.5 rounded-md flex items-center gap-1.5">
                         <ClipboardIcon className="h-4 w-4" /> Prescription
                     </Link>

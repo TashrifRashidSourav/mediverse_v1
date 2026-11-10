@@ -3,6 +3,8 @@ import { db, auth } from '../../../firebase';
 import { Appointment, AppointmentStatus } from '../../../types';
 import { CalendarIcon } from '../../../components/icons/CalendarIcon';
 import { Link } from 'react-router-dom';
+import { fetchPatientRecords } from '../../../utils/patientRecords';
+import { formatLocalDate, parseLocalDate } from '../../../utils/date';
 
 const PatientAppointmentsPage: React.FC = () => {
     const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -20,27 +22,10 @@ const PatientAppointmentsPage: React.FC = () => {
         setIsLoading(true);
         setError('');
         try {
-            const allAppointments: Appointment[] = [];
-            const hospitalsSnapshot = await db.collection('users').get();
-
-            // Create an array of promises for all the subcollection queries
-            const promises = hospitalsSnapshot.docs.map(hospitalDoc => {
-                return db.collection('users').doc(hospitalDoc.id).collection('appointments')
-                    .where('authUid', '==', currentUser.uid)
-                    .get();
-            });
-            
-            // Wait for all queries to complete
-            const results = await Promise.all(promises);
-            
-            results.forEach(snapshot => {
-                snapshot.forEach(doc => {
-                    allAppointments.push({ id: doc.id, ...doc.data() } as Appointment);
-                });
-            });
+            const allAppointments = await fetchPatientRecords<Appointment>('appointments', currentUser.uid);
 
             // Sort appointments by date descending
-            allAppointments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            allAppointments.sort((a, b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime());
             
             setAppointments(allAppointments);
 
@@ -102,8 +87,8 @@ const PatientAppointmentsPage: React.FC = () => {
                                     <tr key={app.id} className="border-t border-slate-200">
                                         <td className="p-4 font-semibold text-slate-800">{app.hospitalName}</td>
                                         <td className="p-4 text-slate-700">{app.doctorName}</td>
-                                        <td className="p-4 text-slate-700">{new Date(app.date).toLocaleDateString()} at {app.time}</td>
-                                        <td className="p-4 font-bold text-slate-700">{app.serialNumber || 'Pending'}</td>
+                                        <td className="p-4 text-slate-700">{formatLocalDate(app.date)} at {app.time}</td>
+                                        <td className="p-4 font-bold text-slate-700">{app.status === AppointmentStatus.Cancelled ? '—' : (app.serialNumber || 'Pending')}</td>
                                         <td className="p-4">
                                              {app.appointmentType === 'Online' && app.status === AppointmentStatus.Confirmed && app.meetingLink ? (
                                                 <Link to={app.meetingLink} className="bg-green-600 text-white font-semibold text-sm py-2 px-4 rounded-lg hover:bg-green-700 transition-colors inline-block">

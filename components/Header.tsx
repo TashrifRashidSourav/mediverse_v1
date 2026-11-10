@@ -4,6 +4,8 @@ import { MedicalIcon } from './icons/MedicalIcon';
 import { auth } from '../firebase';
 import firebase from 'firebase/compat/app';
 import LoginOptionsModal from './LoginOptionsModal'; // Import the new modal
+import { MenuIcon } from './icons/MenuIcon';
+import { XIcon } from './icons/XIcon';
 
 interface UserSession {
   uid: string;
@@ -15,6 +17,7 @@ const Header: React.FC = () => {
   const [session, setSession] = useState<UserSession | null>(null);
   const [dashboardPath, setDashboardPath] = useState<string>('/login');
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user: firebase.User | null) => {
@@ -43,16 +46,17 @@ const Header: React.FC = () => {
   }, []);
 
   const handleLogout = async () => {
+    setIsMobileMenuOpen(false);
     await auth.signOut();
     navigate('/login');
   };
 
   const handleNavAndScroll = (targetId: string) => {
-    if (window.location.hash !== '#/') {
-       navigate('/');
-       setTimeout(() => {
-         document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth' });
-       }, 100);
+    setIsMobileMenuOpen(false);
+    // Home reads the hash ("#/#pricing") and scrolls once it has rendered.
+    const onHome = window.location.hash === '' || /^#\/(#.*)?$/.test(window.location.hash);
+    if (!onHome) {
+       navigate(`/#${targetId}`);
     } else {
        document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth' });
     }
@@ -64,8 +68,17 @@ const Header: React.FC = () => {
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
           <Link to="/" className="flex items-center gap-2">
              <MedicalIcon className="h-8 w-8 text-primary" />
-            <span className="text-2xl font-bold text-slate-900">Medicore</span>
+            <span className="text-2xl font-bold text-slate-900">MediVerse</span>
           </Link>
+          <button
+            type="button"
+            className="md:hidden text-slate-700 p-1"
+            aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={isMobileMenuOpen}
+            onClick={() => setIsMobileMenuOpen(o => !o)}
+          >
+            {isMobileMenuOpen ? <XIcon className="h-6 w-6" /> : <MenuIcon className="h-6 w-6" />}
+          </button>
           <div className="hidden md:flex items-center gap-6">
             <nav className="flex items-center space-x-8">
               <Link to="/hospitals" className="text-slate-600 hover:text-primary transition-colors">Hospitals</Link>
@@ -100,6 +113,26 @@ const Header: React.FC = () => {
             </div>
           </div>
         </div>
+        {isMobileMenuOpen && (
+          <div className="md:hidden border-t border-slate-200 bg-white px-6 py-4 flex flex-col gap-4">
+            <Link to="/hospitals" onClick={() => setIsMobileMenuOpen(false)} className="text-slate-700 font-medium">Hospitals</Link>
+            <Link to="/doctors" onClick={() => setIsMobileMenuOpen(false)} className="text-slate-700 font-medium">Doctors</Link>
+            <button onClick={() => handleNavAndScroll('pricing')} className="text-left text-slate-700 font-medium">Pricing</button>
+            <Link to="/contact" onClick={() => setIsMobileMenuOpen(false)} className="text-slate-700 font-medium">Contact</Link>
+            <div className="h-px bg-slate-200" />
+            {session ? (
+              <>
+                <Link to={dashboardPath} onClick={() => setIsMobileMenuOpen(false)} className="font-semibold text-primary">Dashboard</Link>
+                <button onClick={handleLogout} className="bg-slate-200 text-slate-800 font-semibold px-5 py-2.5 rounded-lg">Log Out</button>
+              </>
+            ) : (
+              <>
+                <button onClick={() => { setIsMobileMenuOpen(false); setIsLoginModalOpen(true); }} className="text-left font-semibold text-primary">Log In</button>
+                <button onClick={() => handleNavAndScroll('pricing')} className="bg-primary text-white font-semibold px-5 py-2.5 rounded-lg">Get Started</button>
+              </>
+            )}
+          </div>
+        )}
       </header>
       <LoginOptionsModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
     </>

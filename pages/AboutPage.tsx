@@ -27,7 +27,7 @@ const AboutPage: React.FC = () => {
               <div className="relative group">
                 <div className="absolute inset-0 bg-gradient-to-r from-primary to-blue-600 rounded-3xl blur opacity-20 group-hover:opacity-40 transition duration-700"></div>
                 <div className="relative rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
-                  <img src="https://images.unsplash.com/photo-1579684385127-1ef15d508118?q=80&w=2000&auto=format&fit=crop" alt="Modern Medical Team" className="w-full h-full object-cover transform group-hover:scale-105 transition duration-700" />
+                  <img src="/images/about-team.jpg" alt="Modern Medical Team" className="w-full h-full object-cover transform group-hover:scale-105 transition duration-700" />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent"></div>
                 </div>
               </div>
@@ -36,7 +36,7 @@ const AboutPage: React.FC = () => {
                   <div className="inline-block px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-semibold tracking-wide uppercase mb-4">Our Vision</div>
                   <h2 className="text-4xl font-bold text-white mb-4">A connected ecosystem for better care.</h2>
                   <p className="text-slate-400 text-lg leading-relaxed">
-                    Imagine a world where patient data flows seamlessly, where appointments are booked in seconds, and where doctors have all the insights they need at their fingertips. That's the world Medicore is building.
+                    Imagine a world where patient data flows seamlessly, where appointments are booked in seconds, and where doctors have all the insights they need at their fingertips. That's the world MediVerse is building.
                   </p>
                 </div>
                 <div className="pt-8 border-t border-white/10">
