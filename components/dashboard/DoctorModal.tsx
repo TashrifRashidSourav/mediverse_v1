@@ -159,7 +159,7 @@ const DoctorModal: React.FC<DoctorModalProps> = ({ isOpen, onClose, onSave, doct
             <div className="mt-6 space-y-5">
               <div className="flex items-center gap-6">
                 <div className="w-24 h-24 rounded-full bg-slate-100 flex-shrink-0 flex items-center justify-center overflow-hidden">
-                    {imagePreview ? <img src={imagePreview} alt="Doctor" className="w-full h-full object-cover" /> : <UserCircleIcon className="h-16 w-16 text-slate-400"/>}
+                    {imagePreview ? <img loading="lazy" decoding="async" src={imagePreview} alt="Doctor" className="w-full h-full object-cover" /> : <UserCircleIcon className="h-16 w-16 text-slate-400"/>}
                 </div>
                 <div className="flex flex-col gap-2">
                     <label htmlFor="imageUpload" className="cursor-pointer text-sm font-semibold text-primary bg-primary-50 hover:bg-primary-100 px-4 py-2 rounded-full text-center">
@@ -202,7 +202,7 @@ const DoctorModal: React.FC<DoctorModalProps> = ({ isOpen, onClose, onSave, doct
                   <input type="tel" id="phone" name="phone" value={formData.phone} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" />
                 </div>
                 <div>
-                  <label htmlFor="email" className="font-semibold text-slate-700 block mb-1.5">Email Address* (for login)</label>
+                  <label htmlFor="email" className="font-semibold text-slate-700 block mb-1.5">Email Address*</label>
                   <input type="email" id="email" name="email" value={formData.email} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-300 transition" required />
                 </div>
               </div>

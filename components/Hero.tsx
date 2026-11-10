@@ -7,7 +7,7 @@ const Hero: React.FC<{
 }> = ({
   title = "Your Hospital's <span class=\"text-primary\">Digital Front Door</span>",
   subtitle = "Create a professional, secure, and user-friendly website for your hospital in minutes. No technical skills required.",
-  imageUrl = "https://images.unsplash.com/photo-1586773860418-d37222d8fce3?q=80&w=2073&auto=format&fit=crop",
+  imageUrl = "/images/hero.jpg",
 }) => {
   const handleScrollToPricing = () => {
     document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
@@ -35,6 +35,10 @@ const Hero: React.FC<{
           <img
             src={imageUrl}
             alt="Modern and clean hospital interior"
+            width={1152}
+            height={500}
+            fetchPriority="high"
+            decoding="async"
             className="rounded-2xl shadow-2xl mx-auto ring-1 ring-slate-200 object-cover h-[500px] w-full max-w-6xl"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-white via-white/50 to-transparent"></div>

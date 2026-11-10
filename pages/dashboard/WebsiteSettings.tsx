@@ -168,10 +168,11 @@ const WebsiteSettings: React.FC = () => {
             // Save to subcollection
             await db.collection('users').doc(hospitalId).collection('settings').doc('site').set(settings, { merge: true });
 
-            // Denormalize key data to parent user doc for faster public list fetching
+            // Denormalize the logo to the parent user doc for the public hospital list.
+            // NOTE: do not touch `location` here. It is the "City, Country" captured at sign-up,
+            // while `address` is the full street address, so copying one over the other wiped it.
             await db.collection('users').doc(hospitalId).update({
-                logoUrl: settings.logoUrl,
-                location: settings.address,
+                logoUrl: settings.logoUrl || '',
             });
 
             alert("Settings saved successfully!");
@@ -233,7 +234,7 @@ const WebsiteSettings: React.FC = () => {
                              </div>
                             <div>
                                  <label className="font-semibold text-slate-700 block mb-1.5">Hospital Logo</label>
-                                 {logoPreview && <img src={logoPreview} alt="Logo preview" className="h-12 mb-2 bg-slate-100 p-1 rounded" />}
+                                 {logoPreview && <img loading="lazy" decoding="async" src={logoPreview} alt="Logo preview" className="h-12 mb-2 bg-slate-100 p-1 rounded" />}
                                  <input type="file" onChange={(e) => handleImageChange(e, 'logo')} accept="image/png, image/jpeg" className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary hover:file:bg-primary-100"/>
                             </div>
                         </div>
@@ -247,7 +248,7 @@ const WebsiteSettings: React.FC = () => {
                         {(userPlan === PlanTier.Premium || userPlan === PlanTier.Golden) && (
                             <div>
                                  <label className="font-semibold text-slate-700 block mb-1.5">Landing Page Image <PlanBadge plan={PlanTier.Premium} /></label>
-                                 {heroImagePreview && <img src={heroImagePreview} alt="Hero preview" className="h-32 w-full object-cover rounded-lg mb-2 bg-slate-100" />}
+                                 {heroImagePreview && <img loading="lazy" decoding="async" src={heroImagePreview} alt="Hero preview" className="h-32 w-full object-cover rounded-lg mb-2 bg-slate-100" />}
                                  <input type="file" onChange={(e) => handleImageChange(e, 'hero')} accept="image/png, image/jpeg" className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary hover:file:bg-primary-100"/>
                             </div>
                         )}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Patient, PatientStatus } from '../../types';
 import { XIcon } from '../icons/XIcon';
+import { todayLocalISO, toLocalISODate, parseLocalDate } from '../../utils/date';
 
 interface PatientModalProps {
   isOpen: boolean;
@@ -15,7 +16,7 @@ const PatientModal: React.FC<PatientModalProps> = ({ isOpen, onClose, onSave, pa
     age: 0,
     gender: 'Other' as 'Male' | 'Female' | 'Other',
     status: PatientStatus.Admitted,
-    admittedDate: new Date().toISOString().split('T')[0],
+    admittedDate: todayLocalISO(),
     phone: '',
     weight: 0,
   });
@@ -28,7 +29,7 @@ const PatientModal: React.FC<PatientModalProps> = ({ isOpen, onClose, onSave, pa
         age: patient.age,
         gender: patient.gender,
         status: patient.status,
-        admittedDate: new Date(patient.admittedDate).toISOString().split('T')[0],
+        admittedDate: toLocalISODate(parseLocalDate(patient.admittedDate)),
         phone: patient.phone,
         weight: patient.weight || 0,
       });
@@ -39,7 +40,7 @@ const PatientModal: React.FC<PatientModalProps> = ({ isOpen, onClose, onSave, pa
         age: 0,
         gender: 'Other',
         status: PatientStatus.Admitted,
-        admittedDate: new Date().toISOString().split('T')[0],
+        admittedDate: todayLocalISO(),
         phone: '',
         weight: 0,
       });
@@ -55,9 +56,10 @@ const PatientModal: React.FC<PatientModalProps> = ({ isOpen, onClose, onSave, pa
     e.preventDefault();
     setIsSubmitting(true);
     // Construct the object without the optional fields if they are empty
+    const { weight, ...rest } = formData;
     const patientDataToSave: Omit<Patient, 'id'> = {
-        ...formData,
-        ...(formData.weight > 0 ? { weight: formData.weight } : { weight: undefined }),
+        ...rest,
+        ...(weight > 0 ? { weight } : {}),
     };
     await onSave(patientDataToSave);
     setIsSubmitting(false);

@@ -42,6 +42,7 @@ const VideoCallPage: React.FC = () => {
     const streamRef = useRef<MediaStream | null>(null);
     const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
     const roleRef = useRef<'caller' | 'callee' | null>(null);
+    const unsubscribersRef = useRef<Array<() => void>>([]);
 
     const localUser = JSON.parse(localStorage.getItem('doctorProfile') || localStorage.getItem('patientProfile') || 'null');
     const isDoctor = !!localStorage.getItem('doctorProfile');
@@ -49,11 +50,31 @@ const VideoCallPage: React.FC = () => {
     const setupWebRTC = async () => {
         if (!hospitalId || !appointmentId) return;
 
-        peerConnectionRef.current = new RTCPeerConnection(servers);
-        const pc = peerConnectionRef.current;
+        const pc = new RTCPeerConnection(servers);
+        peerConnectionRef.current = pc;
         const callDocRef = db.collection('users').doc(hospitalId).collection('appointments').doc(appointmentId).collection('webrtc').doc('signaling');
         const callerCandidatesCollection = callDocRef.collection('callerCandidates');
         const calleeCandidatesCollection = callDocRef.collection('calleeCandidates');
+        const myId = localUser?.uid || localUser?.id;
+
+        // ICE candidates can arrive before the remote description is set; queue them until it is.
+        const pendingCandidates: RTCIceCandidateInit[] = [];
+        const addRemoteCandidate = async (candidate: RTCIceCandidateInit) => {
+            if (!pc.remoteDescription) {
+                pendingCandidates.push(candidate);
+                return;
+            }
+            try {
+                await pc.addIceCandidate(new RTCIceCandidate(candidate));
+            } catch (e) {
+                console.warn('Failed to add ICE candidate', e);
+            }
+        };
+        const flushPendingCandidates = async () => {
+            while (pendingCandidates.length) {
+                await addRemoteCandidate(pendingCandidates.shift()!);
+            }
+        };
 
         streamRef.current?.getTracks().forEach(track => {
             pc.addTrack(track, streamRef.current!);
@@ -66,6 +87,15 @@ const VideoCallPage: React.FC = () => {
             }
         };
 
+        // Detect the other person leaving or the connection dropping.
+        pc.onconnectionstatechange = () => {
+            if (['disconnected', 'failed', 'closed'].includes(pc.connectionState)) {
+                setRemoteUserJoined(false);
+            } else if (pc.connectionState === 'connected') {
+                setRemoteUserJoined(true);
+            }
+        };
+
         pc.onicecandidate = (event) => {
             if (event.candidate) {
                 const candidatesCollection = roleRef.current === 'caller' ? callerCandidatesCollection : calleeCandidatesCollection;
@@ -73,11 +103,22 @@ const VideoCallPage: React.FC = () => {
             }
         };
 
+        // A signaling doc is "stale" if a previous call already finished (it has an answer),
+        // it was started by this same user, or it was abandoned long ago. Otherwise a
+        // rejoining user would wait forever for an offer that will never come.
+        const STALE_AFTER_MS = 30 * 60 * 1000;
         await db.runTransaction(async (transaction) => {
             const callDoc = await transaction.get(callDocRef);
-            if (!callDoc.exists) {
+            const data = callDoc.exists ? callDoc.data() : null;
+            const createdAt = data?.createdAt?.toMillis ? data.createdAt.toMillis() : 0;
+            const isStale = !!data && (!!data.answer || data.initiator === myId || (createdAt > 0 && Date.now() - createdAt > STALE_AFTER_MS));
+
+            if (!callDoc.exists || isStale) {
                 roleRef.current = 'caller';
-                transaction.set(callDocRef, { initiator: localUser.uid || localUser.id });
+                transaction.set(callDocRef, {
+                    initiator: myId,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                });
             } else {
                 roleRef.current = 'callee';
             }
@@ -95,49 +136,65 @@ const VideoCallPage: React.FC = () => {
 
             const offerDescription = await pc.createOffer();
             await pc.setLocalDescription(offerDescription);
-            await callDocRef.set({ offer: { type: offerDescription.type, sdp: offerDescription.sdp } });
-
-            callDocRef.onSnapshot(async (snapshot) => {
-                const data = snapshot.data();
-                if (!pc.currentRemoteDescription && data?.answer) {
-                    await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
-                }
+            await callDocRef.set({
+                initiator: myId,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                offer: { type: offerDescription.type, sdp: offerDescription.sdp },
             });
 
-            calleeCandidatesCollection.onSnapshot((snapshot) => {
-                snapshot.docChanges().forEach((change) => {
-                    if (change.type === 'added') pc.addIceCandidate(new RTCIceCandidate(change.doc.data()));
-                });
-            });
+            unsubscribersRef.current.push(
+                callDocRef.onSnapshot(async (snapshot) => {
+                    const data = snapshot.data();
+                    if (!pc.currentRemoteDescription && data?.answer) {
+                        await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+                        await flushPendingCandidates();
+                    }
+                }),
+                calleeCandidatesCollection.onSnapshot((snapshot) => {
+                    snapshot.docChanges().forEach((change) => {
+                        if (change.type === 'added') addRemoteCandidate(change.doc.data());
+                    });
+                })
+            );
 
         } else { // Callee logic
-            const unsubscribeOffer = callDocRef.onSnapshot(async (snapshot) => {
-                const data = snapshot.data();
-                if (!pc.currentRemoteDescription && data?.offer) {
-                    unsubscribeOffer();
-                    await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
-                    const answerDescription = await pc.createAnswer();
-                    await pc.setLocalDescription(answerDescription);
-                    await callDocRef.update({ answer: { type: answerDescription.type, sdp: answerDescription.sdp } });
-                }
-            });
-
-            callerCandidatesCollection.onSnapshot((snapshot) => {
-                snapshot.docChanges().forEach((change) => {
-                    if (change.type === 'added') pc.addIceCandidate(new RTCIceCandidate(change.doc.data()));
-                });
-            });
+            let offerHandled = false;
+            unsubscribersRef.current.push(
+                callDocRef.onSnapshot(async (snapshot) => {
+                    const data = snapshot.data();
+                    if (!offerHandled && data?.offer) {
+                        offerHandled = true;
+                        await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+                        await flushPendingCandidates();
+                        const answerDescription = await pc.createAnswer();
+                        await pc.setLocalDescription(answerDescription);
+                        await callDocRef.update({ answer: { type: answerDescription.type, sdp: answerDescription.sdp } });
+                    }
+                }),
+                callerCandidatesCollection.onSnapshot((snapshot) => {
+                    snapshot.docChanges().forEach((change) => {
+                        if (change.type === 'added') addRemoteCandidate(change.doc.data());
+                    });
+                })
+            );
         }
     };
-    
+
     const cleanup = async () => {
+        unsubscribersRef.current.forEach(unsub => unsub());
+        unsubscribersRef.current = [];
         streamRef.current?.getTracks().forEach(track => track.stop());
         if (peerConnectionRef.current) {
             peerConnectionRef.current.close();
             peerConnectionRef.current = null;
         }
 
-        if (isDoctor && hospitalId && appointmentId) {
+        // Whoever started the call (or the doctor) removes the signaling data so the next
+        // session starts clean. Previously only the doctor did, which left stale data behind
+        // when a patient started the call and closed the tab.
+        const wasCaller = roleRef.current === 'caller';
+        roleRef.current = null;
+        if ((isDoctor || wasCaller) && hospitalId && appointmentId) {
             try {
                 const signalingDocRef = db.collection('users').doc(hospitalId).collection('appointments').doc(appointmentId).collection('webrtc').doc('signaling');
 
@@ -186,9 +243,20 @@ const VideoCallPage: React.FC = () => {
                 if (!window.isSecureContext) throw { type: 'context', message: "Camera and microphone access requires a secure connection (HTTPS)." };
                 if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw { type: 'unsupported', message: "Your browser does not support video calls." };
                 
-                const cameraPerm = await navigator.permissions.query({ name: 'camera' as PermissionName });
-                const micPerm = await navigator.permissions.query({ name: 'microphone' as PermissionName });
-                if (cameraPerm.state === 'denied' || micPerm.state === 'denied') throw { type: 'permission', message: 'Camera and microphone access was denied. You must enable it in your browser or device settings.'};
+                // The Permissions API does not support "camera"/"microphone" in every browser
+                // (Firefox and Safari throw), so only use it as an early hint when available.
+                try {
+                    const [cameraPerm, micPerm] = await Promise.all([
+                        navigator.permissions.query({ name: 'camera' as PermissionName }),
+                        navigator.permissions.query({ name: 'microphone' as PermissionName }),
+                    ]);
+                    if (cameraPerm.state === 'denied' || micPerm.state === 'denied') {
+                        throw { type: 'permission', message: 'Camera and microphone access was denied. You must enable it in your browser or device settings.' };
+                    }
+                } catch (permErr: any) {
+                    if (permErr?.type === 'permission') throw permErr;
+                    // Permissions API unavailable for these devices: fall through to getUserMedia.
+                }
                 
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
                 streamRef.current = stream;
@@ -329,7 +397,7 @@ const VideoCallPage: React.FC = () => {
     };
 
     return (
-        <div className="w-full h-screen bg-gray-900 text-white flex flex-col relative overflow-hidden">
+        <div className="w-full h-screen h-dvh bg-gray-900 text-white flex flex-col relative overflow-hidden">
             {renderContent()}
         </div>
     );

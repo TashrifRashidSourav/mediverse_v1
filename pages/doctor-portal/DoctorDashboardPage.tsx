@@ -4,9 +4,8 @@ import DoctorSidebar from '../../components/doctor-portal/DoctorSidebar';
 import { MenuIcon } from '../../components/icons/MenuIcon';
 import { ChevronDownIcon } from '../../components/icons/ChevronDownIcon';
 import { UserCircleIcon } from '../../components/icons/UserCircleIcon';
-import { SiteSettings, PlanTier, User } from '../../types';
-import MediBot from '../../components/MediBot';
-import { db } from '../../firebase';
+import { SiteSettings } from '../../types';
+import UserMenu from '../../components/UserMenu';
 
 interface DoctorProfile {
     id: string;
@@ -19,7 +18,6 @@ interface DoctorProfile {
 const DoctorDashboardPage: React.FC = () => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [doctorProfile, setDoctorProfile] = useState<DoctorProfile | null>(null);
-  const [showMediBot, setShowMediBot] = useState(false);
   const navigate = useNavigate();
   const { subdomain } = useParams<{ subdomain: string }>();
 
@@ -31,21 +29,6 @@ const DoctorDashboardPage: React.FC = () => {
           handleLogout();
       } else {
           setDoctorProfile(parsedProfile);
-          // Check hospital plan
-          const checkPlan = async () => {
-            try {
-              const userQuery = await db.collection('users').where('subdomain', '==', subdomain).limit(1).get();
-              if(!userQuery.empty) {
-                const hospitalData = userQuery.docs[0].data() as User;
-                if (hospitalData.plan === PlanTier.Golden) {
-                  setShowMediBot(true);
-                }
-              }
-            } catch (e) {
-              console.error("Could not verify hospital plan for doctor", e);
-            }
-          };
-          checkPlan();
       }
     } else {
         navigate(`/${subdomain}/doctor-portal/login`);
@@ -64,7 +47,7 @@ const DoctorDashboardPage: React.FC = () => {
   const themeColor = doctorProfile.settings?.themeColor || '#0D9488';
 
   return (
-    <div className="flex h-screen bg-slate-100 font-sans">
+    <div className="flex h-screen h-dvh bg-slate-100 font-sans">
       <DoctorSidebar 
         isOpen={isMobileSidebarOpen} 
         setIsOpen={setIsMobileSidebarOpen} 
@@ -80,23 +63,18 @@ const DoctorDashboardPage: React.FC = () => {
             </button>
             <div className="hidden md:block"></div> {/* Spacer */}
             
-            <div className="relative group">
-               <button className="flex items-center gap-2">
+            <UserMenu trigger={<>
                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold" style={{ backgroundColor: themeColor }}>
                     {doctorProfile.name?.charAt(0).toUpperCase() || <UserCircleIcon className="w-5 h-5"/>}
                  </div>
                  <span className="font-semibold text-slate-700 hidden sm:block">{doctorProfile.name}</span>
                  <ChevronDownIcon className="h-4 w-4 text-slate-500" />
-               </button>
-               <div className="absolute right-0 pt-2 hidden group-hover:block z-50">
-                 <div className="w-48 bg-white rounded-xl shadow-2xl py-2 border border-slate-100 overflow-hidden">
+               </>}>
                    <button onClick={handleLogout} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">
                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
                      Log Out
                    </button>
-                 </div>
-               </div>
-            </div>
+                 </UserMenu>
           </div>
         </header>
         

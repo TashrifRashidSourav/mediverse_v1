@@ -44,12 +44,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, hospitalName, subd
 
   return (
     <>
-      <aside className={`fixed top-0 left-0 z-50 w-64 h-screen bg-slate-800 text-white flex flex-col transition-transform duration-300 md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed top-0 left-0 z-50 w-64 h-screen h-dvh bg-slate-800 text-white flex flex-col transition-transform duration-300 md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex items-center justify-between px-6 py-5 border-b border-slate-700">
           <Link to={baseDashboardPath} className="flex items-center gap-2">
              {logoUrl ? (
                 <div className="h-8 w-8 flex items-center justify-center bg-white rounded-md p-1">
-                    <img src={logoUrl} alt={`${hospitalName} Logo`} className="h-full w-full object-contain"/>
+                    <img loading="lazy" decoding="async" src={logoUrl} alt={`${hospitalName} Logo`} className="h-full w-full object-contain"/>
                 </div>
             ) : (
                 <MedicalIcon className="h-7 w-7 text-primary" />

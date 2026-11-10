@@ -125,6 +125,7 @@ const DoctorManagement: React.FC = () => {
                 setPermissionError(true);
             }
             console.error("Error saving doctor:", error);
+            alert('Could not save the doctor. Please try again.');
         }
     };
     
@@ -183,7 +184,7 @@ const DoctorManagement: React.FC = () => {
                                         <td className="p-4">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-10 h-10 rounded-full bg-slate-100 flex-shrink-0 flex items-center justify-center overflow-hidden">
-                                                    {doctor.imageUrl ? <img src={doctor.imageUrl} alt={doctor.name} className="w-full h-full object-cover" /> : <UserCircleIcon className="h-6 w-6 text-slate-400" />}
+                                                    {doctor.imageUrl ? <img loading="lazy" decoding="async" src={doctor.imageUrl} alt={doctor.name} className="w-full h-full object-cover" /> : <UserCircleIcon className="h-6 w-6 text-slate-400" />}
                                                 </div>
                                                 <span className="font-semibold text-slate-800">{doctor.name}</span>
                                             </div>

@@ -29,7 +29,7 @@ const LoginOptionsModal: React.FC<LoginOptionsModalProps> = ({ isOpen, onClose }
           <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
             <XIcon className="h-6 w-6" />
           </button>
-          <h2 className="text-2xl font-bold text-slate-900 text-center">Log In to Medicore</h2>
+          <h2 className="text-2xl font-bold text-slate-900 text-center">Log In to MediVerse</h2>
           <p className="text-center text-slate-500 mt-2">Please select your role to continue.</p>
           
           <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">

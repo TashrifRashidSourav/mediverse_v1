@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { db } from '../firebase';
+import { db, firebase } from '../firebase';
 import { User } from '../types';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { MedicalIcon } from '../components/icons/MedicalIcon';
+
+const PAGE_SIZE = 12;
 
 const HospitalListPage: React.FC = () => {
     const location = useLocation();
@@ -12,32 +14,42 @@ const HospitalListPage: React.FC = () => {
     
     const [hospitals, setHospitals] = useState<User[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const [hasMore, setHasMore] = useState(false);
+    const lastDocRef = useRef<firebase.firestore.QueryDocumentSnapshot | null>(null);
+
+    const loadPage = useCallback(async (initial: boolean) => {
+        initial ? setIsLoading(true) : setIsLoadingMore(true);
+        try {
+            // Filter on the server and page through results, instead of
+            // downloading every hospital document and filtering in the browser.
+            let query = db.collection('users')
+                .where('status', '==', 'approved')
+                .orderBy(firebase.firestore.FieldPath.documentId())
+                .limit(PAGE_SIZE);
+            if (!initial && lastDocRef.current) {
+                query = query.startAfter(lastDocRef.current);
+            }
+            const snapshot = await query.get();
+            const page = snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as User));
+
+            lastDocRef.current = snapshot.docs[snapshot.docs.length - 1] ?? null;
+            setHasMore(snapshot.docs.length === PAGE_SIZE);
+            setHospitals(prev => {
+                const merged = initial ? page : [...prev, ...page];
+                return merged.sort((a, b) => a.hospitalName.localeCompare(b.hospitalName));
+            });
+        } catch (error) {
+            console.error("Error fetching hospitals:", error);
+        } finally {
+            setIsLoading(false);
+            setIsLoadingMore(false);
+        }
+    }, []);
 
     useEffect(() => {
-        const fetchHospitals = async () => {
-            setIsLoading(true);
-            try {
-                // Fetch all users and filter client-side to include older accounts without a status field.
-                // This matches the login logic but can be inefficient at scale.
-                const snapshot = await db.collection('users').get();
-                
-                const hospitalData = snapshot.docs
-                    .map(doc => ({ uid: doc.id, ...doc.data() } as User))
-                    // IMPORTANT: Show hospitals that are 'approved' OR have no status field (for legacy compatibility)
-                    .filter(user => user.status === 'approved' || !user.status);
-
-                // Perform sorting on the client-side.
-                hospitalData.sort((a, b) => a.hospitalName.localeCompare(b.hospitalName));
-
-                setHospitals(hospitalData);
-            } catch (error) {
-                console.error("Error fetching hospitals:", error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchHospitals();
-    }, []);
+        loadPage(true);
+    }, [loadPage]);
 
     const content = (
         <>
@@ -64,7 +76,7 @@ const HospitalListPage: React.FC = () => {
                         <div key={hospital.uid} className="bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col group transform hover:-translate-y-2 transition-transform duration-300">
                             <div className="h-40 bg-slate-200 flex items-center justify-center p-4">
                                 {hospital.logoUrl ? (
-                                    <img src={hospital.logoUrl} alt={`${hospital.hospitalName} Logo`} className="max-h-24 object-contain"/>
+                                    <img loading="lazy" decoding="async" src={hospital.logoUrl} alt={`${hospital.hospitalName} Logo`} className="max-h-24 object-contain"/>
                                 ) : (
                                     <MedicalIcon className="h-16 w-16 text-primary/50" />
                                 )}
@@ -83,6 +95,18 @@ const HospitalListPage: React.FC = () => {
                             </div>
                         </div>
                     ))}
+                </div>
+            )}
+
+            {hasMore && !isLoading && (
+                <div className="text-center mt-10">
+                    <button
+                        onClick={() => loadPage(false)}
+                        disabled={isLoadingMore}
+                        className="bg-primary text-white font-bold py-2.5 px-8 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-60"
+                    >
+                        {isLoadingMore ? 'Loading...' : 'Load more hospitals'}
+                    </button>
                 </div>
             )}
         </>

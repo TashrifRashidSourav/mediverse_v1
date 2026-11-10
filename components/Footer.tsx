@@ -23,7 +23,7 @@ const Footer: React.FC = () => {
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center gap-2 mb-4">
               <MedicalIcon className="h-8 w-8 text-primary" />
-              <span className="text-2xl font-bold text-white">Medicore</span>
+              <span className="text-2xl font-bold text-white">MediVerse</span>
             </div>
             <p className="max-w-md">Empowering hospitals with the digital tools they need to provide better care and connect with patients.</p>
           </div>
@@ -43,7 +43,7 @@ const Footer: React.FC = () => {
           </div>
         </div>
         <div className="mt-12 border-t border-slate-800 pt-8 text-center text-sm">
-          <p>&copy; {new Date().getFullYear()} Medicore. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} MediVerse. All rights reserved.</p>
         </div>
       </div>
     </footer>

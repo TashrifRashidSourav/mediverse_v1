@@ -3,6 +3,7 @@ import { db, auth } from '../../../firebase';
 import { Invoice, Plan } from '../../../types';
 import { BillingIcon } from '../../../components/icons/BillingIcon';
 import PaymentPopup from '../../../components/PaymentPopup';
+import { formatMoney } from '../../../utils/format';
 
 const PatientBillingPage: React.FC = () => {
     const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -176,7 +177,7 @@ const PatientBillingPage: React.FC = () => {
                                                 ))}
                                             </ul>
                                         </td>
-                                        <td className="p-4 font-bold text-slate-800">${invoice.totalAmount.toFixed(2)}</td>
+                                        <td className="p-4 font-bold text-slate-800">{formatMoney(invoice.totalAmount)}</td>
                                         <td className="p-4">
                                             <span className={`px-2 py-1 text-xs font-semibold rounded-full ${invoice.status === 'Paid' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>
                                                 {invoice.status}
@@ -205,7 +206,7 @@ const PatientBillingPage: React.FC = () => {
             <PaymentPopup 
                 isOpen={isPaymentPopupOpen}
                 onClose={() => setIsPaymentPopupOpen(false)}
-                plan={selectedInvoice ? { id: selectedInvoice.id, name: `Invoice #${selectedInvoice.id}`, price: selectedInvoice.totalAmount } as Plan : null}
+                plan={selectedInvoice ? { id: selectedInvoice.id, name: `Invoice #${selectedInvoice.id}`, price: selectedInvoice.totalAmount } as unknown as Plan : null}
                 onPaymentSuccess={handlePaymentSuccess}
             />
         </div>

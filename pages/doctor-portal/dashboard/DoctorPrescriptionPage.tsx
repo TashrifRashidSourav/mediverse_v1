@@ -9,8 +9,6 @@ import { SaveIcon } from '../../../components/icons/SaveIcon';
 import { DownloadIcon } from '../../../components/icons/DownloadIcon';
 
 // Declare globals from CDN to prevent TypeScript errors
-declare const html2canvas: any;
-declare const jspdf: any;
 
 const generateId = () => '_' + Math.random().toString(36).substr(2, 9);
 
@@ -41,7 +39,12 @@ const DoctorPrescriptionPage: React.FC = () => {
     }, []);
     
     useEffect(() => {
-        if (!patientId || !subdomain || !doctorProfile) return;
+        if (!doctorProfile) return;
+        if (!patientId || !subdomain) {
+            // Opened without choosing a patient: stop the spinner and explain.
+            setIsLoading(false);
+            return;
+        }
 
         const fetchPatient = async () => {
             try {
@@ -78,19 +81,22 @@ const DoctorPrescriptionPage: React.FC = () => {
 
     const handlePrint = () => window.print();
     
-    const handleExportPDF = () => {
+    const handleExportPDF = async () => {
         const input = prescriptionRef.current;
         if (!input) return;
-        const { jsPDF } = jspdf;
+        // Heavy PDF libs are loaded on demand, only when the user exports.
+        const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+            import('html2canvas'),
+            import('jspdf'),
+        ]);
 
-        html2canvas(input, { scale: 2 }).then((canvas: any) => {
-            const imgData = canvas.toDataURL('image/png');
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-            pdf.save(`prescription-${patient?.name}-${new Date().toISOString().split('T')[0]}.pdf`);
-        });
+        const canvas = await html2canvas(input, { scale: 2 });
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        pdf.save(`prescription-${patient?.name}-${new Date().toISOString().split('T')[0]}.pdf`);
     };
 
     const handleSave = async () => {
@@ -104,7 +110,7 @@ const DoctorPrescriptionPage: React.FC = () => {
 
             const newPrescription: Omit<Prescription, 'id'> = {
                 patientId: patient.id,
-                authUid: patient.authUid,
+                ...(patient.authUid ? { authUid: patient.authUid } : {}),
                 patientName: patient.name,
                 patientAge: patient.age,
                 patientGender: patient.gender,
@@ -137,7 +143,7 @@ const DoctorPrescriptionPage: React.FC = () => {
 
     if (isLoading) return <div className="p-4">Loading patient details...</div>;
     if (error) return <div className="p-4 text-red-600 font-bold">{error}</div>;
-    if (!patient) return <div className="p-4">No patient data. Please go back and select a patient.</div>
+    if (!patient) return <div className="p-4">No patient selected. Go to <strong>Patient Access</strong>, find the patient, then choose "Write Prescription".</div>
 
     return (
         <div>

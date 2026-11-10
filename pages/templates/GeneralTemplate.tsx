@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { type User, SiteSettings } from '../../types';
 import { MedicalIcon } from '../../components/icons/MedicalIcon';
 import { db } from '../../firebase';
@@ -31,6 +31,11 @@ const GeneralTemplate: React.FC<TemplateProps> = ({ hospital, page = 'home' }) =
     fetchSettings();
   }, [hospital.uid]);
 
+  // This plan has no doctors page; /:subdomain/doctors used to render an empty page.
+  if (page === 'doctors') {
+    return <Navigate to={`/${hospital.subdomain}`} replace />;
+  }
+
   if (loading) {
       return (
           <div className="min-h-screen flex flex-col items-center justify-center bg-white">
@@ -43,16 +48,16 @@ const GeneralTemplate: React.FC<TemplateProps> = ({ hospital, page = 'home' }) =
     <div className="bg-white font-sans min-h-screen flex flex-col">
       {/* Header */}
       <header className="border-b border-slate-200">
-        <div className="container mx-auto px-6 py-4 flex justify-between items-center">
+        <div className="container mx-auto px-6 py-4 flex flex-col sm:flex-row gap-3 justify-between items-center">
           <Link to={`/${hospital.subdomain}`} className="flex items-center gap-3">
             {settings.logoUrl ? (
-                <img src={settings.logoUrl} alt={`${hospital.hospitalName} Logo`} className="h-10 max-h-10 object-contain"/>
+                <img loading="lazy" decoding="async" src={settings.logoUrl} alt={`${hospital.hospitalName} Logo`} className="h-10 max-h-10 object-contain"/>
             ) : (
                 <MedicalIcon className="h-8 w-8 text-teal-600" />
             )}
             <span className="text-2xl font-bold text-slate-900">{hospital.hospitalName}</span>
           </Link>
-          <nav className="flex items-center gap-6">
+          <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
             <Link to={`/${hospital.subdomain}`} className={`font-semibold ${page === 'home' ? 'text-teal-600' : 'text-slate-600 hover:text-teal-600'}`}>Home</Link>
             <Link to={`/${hospital.subdomain}/about`} className={`font-semibold ${page === 'about' ? 'text-teal-600' : 'text-slate-600 hover:text-teal-600'}`}>About</Link>
             <Link to={`/${hospital.subdomain}/contact`} className={`font-semibold ${page === 'contact' ? 'text-teal-600' : 'text-slate-600 hover:text-teal-600'}`}>Contact</Link>
@@ -117,7 +122,7 @@ const GeneralTemplate: React.FC<TemplateProps> = ({ hospital, page = 'home' }) =
                 <div className="flex flex-col items-start text-left">
                     <Link to={`/${hospital.subdomain}`} className="flex items-center gap-3 mb-6">
                         {settings.logoUrl ? (
-                            <img src={settings.logoUrl} alt={`${hospital.hospitalName} Logo`} className="h-10 brightness-0 invert opacity-90"/>
+                            <img loading="lazy" decoding="async" src={settings.logoUrl} alt={`${hospital.hospitalName} Logo`} className="h-10 brightness-0 invert opacity-90"/>
                         ) : (
                             <MedicalIcon className="h-10 w-10 text-white" />
                         )}
@@ -168,7 +173,7 @@ const GeneralTemplate: React.FC<TemplateProps> = ({ hospital, page = 'home' }) =
 
             <div className="border-t border-slate-700 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
                 <p className="text-sm opacity-60">&copy; {new Date().getFullYear()} {hospital.hospitalName}. All rights reserved.</p>
-                <p className="text-sm opacity-60">Powered by <span className="font-semibold text-white">Medicore</span></p>
+                <p className="text-sm opacity-60">Powered by <span className="font-semibold text-white">MediVerse</span></p>
             </div>
         </div>
       </footer>

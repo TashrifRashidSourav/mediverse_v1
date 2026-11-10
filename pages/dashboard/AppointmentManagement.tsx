@@ -1,23 +1,28 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { db, auth, firebase } from '../../firebase';
-import { Appointment, AppointmentStatus, Doctor, Patient } from '../../types';
-import AppointmentModal from '../../components/dashboard/AppointmentModal';
-import { PlusIcon } from '../../components/icons/PlusIcon';
+import { Appointment, AppointmentStatus } from '../../types';
+import { formatLocalDate } from '../../utils/date';
+import { slotId } from '../../utils/slots';
 import { CheckCircleIcon } from '../../components/icons/CheckCircleIcon';
 import { XCircleIcon } from '../../components/icons/XCircleIcon';
 import PermissionGuide from '../../components/dashboard/PermissionGuide';
-import { XIcon } from '../../components/icons/XIcon';
 import { VideoCameraIcon } from '../../components/icons/VideoCameraIcon';
 
 const PAGE_SIZE = 15;
 
 const ConfirmAppointmentModal: React.FC<{
     isOpen: boolean;
+    defaultSerial: number;
     onClose: () => void;
     onConfirm: (serialNumber: number) => void;
-}> = ({ isOpen, onClose, onConfirm }) => {
-    const [serial, setSerial] = useState(1);
-    
+}> = ({ isOpen, defaultSerial, onClose, onConfirm }) => {
+    const [serial, setSerial] = useState(defaultSerial);
+
+    // Start from the suggested serial each time the dialog opens (it used to keep the last value).
+    useEffect(() => {
+        if (isOpen) setSerial(defaultSerial);
+    }, [isOpen, defaultSerial]);
+
     if(!isOpen) return null;
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -56,12 +61,10 @@ const ConfirmAppointmentModal: React.FC<{
 
 const AppointmentManagement: React.FC = () => {
     const [appointments, setAppointments] = useState<Appointment[]>([]);
-    const [doctors, setDoctors] = useState<Doctor[]>([]);
-    const [patients, setPatients] = useState<Patient[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [isModalOpen, setIsModalOpen] = useState(false);
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
     const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+    const [defaultSerial, setDefaultSerial] = useState(1);
     const [hospitalId, setHospitalId] = useState<string | null>(null);
     const [permissionError, setPermissionError] = useState(false);
 
@@ -129,53 +132,79 @@ const AppointmentManagement: React.FC = () => {
     useEffect(() => {
         if(hospitalId) {
             fetchAppointments('first');
-            // Fetch doctors and patients only once as they are for dropdowns
-            const fetchMeta = async () => {
-                const doctorsPromise = db.collection('users').doc(hospitalId!).collection('doctors').get();
-                const patientsPromise = db.collection('users').doc(hospitalId!).collection('patients').get();
-                 const [doctorsSnapshot, patientsSnapshot] = await Promise.all([doctorsPromise, patientsPromise]);
-                setDoctors(doctorsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Doctor)));
-                setPatients(patientsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Patient)));
-            };
-            fetchMeta().catch(console.error);
         }
     }, [hospitalId]);
 
-    const handleConfirm = async (serialNumber: number) => {
-        if (!hospitalId || !selectedAppointment) return;
+    const releaseSlot = async (app: Appointment) => {
+        if (!hospitalId) return;
         try {
-            const updateData: { status: AppointmentStatus; serialNumber: number; meetingLink?: string } = {
-                status: AppointmentStatus.Confirmed,
-                serialNumber: serialNumber,
-            };
+            await db.collection('users').doc(hospitalId).collection('slots').doc(slotId(app.doctorId, app.date, app.time)).delete();
+        } catch (error) {
+            // Slot docs only exist once slot rules are deployed; nothing to release otherwise.
+            console.warn('Could not release slot', error);
+        }
+    };
 
-            if (selectedAppointment.appointmentType === 'Online') {
-                updateData.meetingLink = `/meet/${hospitalId}/${selectedAppointment.id}`;
-            }
+    /** Suggest the next serial number for this doctor on this day. */
+    const openConfirm = async (app: Appointment) => {
+        setSelectedAppointment(app);
+        setDefaultSerial(1);
+        setIsConfirmModalOpen(true);
+        if (!hospitalId) return;
+        try {
+            const snap = await db.collection('users').doc(hospitalId).collection('appointments')
+                .where('doctorId', '==', app.doctorId)
+                .where('date', '==', app.date)
+                .get();
+            const maxSerial = snap.docs.reduce((max, d) => Math.max(max, Number(d.data().serialNumber) || 0), 0);
+            setDefaultSerial(maxSerial + 1);
+        } catch (error) {
+            console.warn('Could not suggest serial number', error);
+        }
+    };
 
-            await db.collection('users').doc(hospitalId).collection('appointments').doc(selectedAppointment.id).update(updateData);
+    const updateStatus = async (app: Appointment, status: AppointmentStatus, extra: Record<string, unknown> = {}) => {
+        if (!hospitalId) return false;
+        try {
+            await db.collection('users').doc(hospitalId).collection('appointments').doc(app.id).update({ status, ...extra });
+            if (status === AppointmentStatus.Cancelled || status === AppointmentStatus.No_Show) await releaseSlot(app);
+            return true;
+        } catch (error) {
+            console.error('Error updating appointment:', error);
+            alert('Could not update the appointment. Please try again.');
+            return false;
+        }
+    };
+
+    const handleConfirm = async (serialNumber: number) => {
+        if (!selectedAppointment) return;
+        const extra: Record<string, unknown> = { serialNumber };
+        if (selectedAppointment.appointmentType === 'Online') {
+            extra.meetingLink = `/meet/${hospitalId}/${selectedAppointment.id}`;
+        }
+        if (await updateStatus(selectedAppointment, AppointmentStatus.Confirmed, extra)) {
             fetchAppointments('first');
             setIsConfirmModalOpen(false);
             setSelectedAppointment(null);
-        } catch (error) {
-            console.error("Error confirming appointment:", error);
         }
     };
 
     const handleCancel = async (appointment: Appointment) => {
-        if (!hospitalId) return;
         if (window.confirm(`Are you sure you want to cancel the appointment for ${appointment.patientName}?`)) {
-            try {
-                await db.collection('users').doc(hospitalId).collection('appointments').doc(appointment.id).update({
-                    status: AppointmentStatus.Cancelled
-                });
-                fetchAppointments('first');
-            } catch (error) {
-                console.error("Error cancelling appointment:", error);
-            }
+            if (await updateStatus(appointment, AppointmentStatus.Cancelled)) fetchAppointments('first');
         }
     };
-    
+
+    const handleComplete = async (appointment: Appointment) => {
+        if (await updateStatus(appointment, AppointmentStatus.Completed)) fetchAppointments('first');
+    };
+
+    const handleNoShow = async (appointment: Appointment) => {
+        if (window.confirm(`Mark ${appointment.patientName} as a no-show?`)) {
+            if (await updateStatus(appointment, AppointmentStatus.No_Show)) fetchAppointments('first');
+        }
+    };
+
     const getStatusColor = (status: AppointmentStatus) => {
         switch(status) {
             case AppointmentStatus.Scheduled: return 'bg-amber-100 text-amber-800';
@@ -222,7 +251,7 @@ const AppointmentManagement: React.FC = () => {
                                     <tr key={app.id} className="border-t border-slate-200">
                                         <td className="p-4 font-semibold text-slate-800">{app.patientName}</td>
                                         <td className="p-4 text-slate-700">{app.doctorName}</td>
-                                        <td className="p-4 text-slate-700">{new Date(app.date).toLocaleDateString()} at {app.time}</td>
+                                        <td className="p-4 text-slate-700">{formatLocalDate(app.date)} at {app.time}</td>
                                         <td className="p-4">
                                             {app.appointmentType === 'Online' ? (
                                                 <span className="inline-flex items-center gap-1.5 text-xs font-semibold bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
@@ -242,7 +271,7 @@ const AppointmentManagement: React.FC = () => {
                                                 {app.status === AppointmentStatus.Scheduled && (
                                                     <>
                                                         <button 
-                                                            onClick={() => { setSelectedAppointment(app); setIsConfirmModalOpen(true); }} 
+                                                            onClick={() => openConfirm(app)} 
                                                             className="text-green-600 hover:text-green-800"
                                                             title="Confirm"
                                                         >
@@ -257,7 +286,14 @@ const AppointmentManagement: React.FC = () => {
                                                         </button>
                                                     </>
                                                 )}
-                                                {app.status !== AppointmentStatus.Scheduled && (
+                                                {app.status === AppointmentStatus.Confirmed && (
+                                                    <>
+                                                        <button onClick={() => handleComplete(app)} className="text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-md" title="Mark as completed">Complete</button>
+                                                        <button onClick={() => handleNoShow(app)} className="text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-md" title="Patient did not attend">No-show</button>
+                                                        <button onClick={() => handleCancel(app)} className="text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded-md" title="Cancel appointment">Cancel</button>
+                                                    </>
+                                                )}
+                                                {app.status !== AppointmentStatus.Scheduled && app.status !== AppointmentStatus.Confirmed && (
                                                     <span className="text-xs text-slate-400">No actions</span>
                                                 )}
                                             </div>
@@ -288,6 +324,7 @@ const AppointmentManagement: React.FC = () => {
 
             <ConfirmAppointmentModal 
                 isOpen={isConfirmModalOpen}
+                defaultSerial={defaultSerial}
                 onClose={() => setIsConfirmModalOpen(false)}
                 onConfirm={handleConfirm}
             />

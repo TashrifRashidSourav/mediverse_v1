@@ -3,7 +3,6 @@ import { NavLink, Link, useParams } from 'react-router-dom';
 import { MedicalIcon } from '../icons/MedicalIcon';
 import { CalendarIcon } from '../icons/CalendarIcon';
 import { UsersIcon } from '../icons/UsersIcon';
-import { ClipboardIcon } from '../icons/ClipboardIcon';
 import { XIcon } from '../icons/XIcon';
 import { SiteSettings } from '../../types';
 
@@ -22,7 +21,7 @@ const DoctorSidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, hospitalName
 
   const navItems = [
     { name: 'My Schedule', path: '', icon: CalendarIcon, end: true },
-    { name: 'Patient Access', path: 'patients', icon: UsersIcon },
+    { name: 'Patient Access & Prescriptions', path: 'patients', icon: UsersIcon },
   ];
   
   const navLinkClasses = 'flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors';
@@ -35,12 +34,12 @@ const DoctorSidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, hospitalName
 
   return (
     <>
-      <aside className={`fixed top-0 left-0 z-50 w-64 h-screen bg-slate-800 text-white flex flex-col transition-transform duration-300 md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed top-0 left-0 z-50 w-64 h-screen h-dvh bg-slate-800 text-white flex flex-col transition-transform duration-300 md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex items-center justify-between px-6 py-5 border-b border-slate-700">
           <Link to={baseDashboardPath} className="flex items-center gap-2">
             {settings?.logoUrl ? (
                 <div className="h-8 w-8 flex items-center justify-center bg-white rounded-md p-1">
-                    <img src={settings.logoUrl} alt={`${hospitalName} Logo`} className="h-full w-full object-contain" />
+                    <img loading="lazy" decoding="async" src={settings.logoUrl} alt={`${hospitalName} Logo`} className="h-full w-full object-contain" />
                 </div>
             ) : (
                 <MedicalIcon className="h-7 w-7" style={{color: themeColor}} />
@@ -69,12 +68,6 @@ const DoctorSidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, hospitalName
                 </NavLink>
               </li>
             ))}
-             <li className="mt-2 pt-2 border-t border-slate-700">
-                 <Link to={`/${subdomain}/doctor-portal/dashboard/patients`} onClick={handleLinkClick} className={`${navLinkClasses} bg-slate-700/50`}>
-                    <ClipboardIcon className="h-5 w-5"/>
-                    <span>Write Prescription</span>
-                 </Link>
-             </li>
           </ul>
         </nav>
       </aside>

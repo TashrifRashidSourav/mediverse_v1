@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { type Plan, type SignUpFormData, PlanTier, type User } from "../types";
-import { PLANS } from "../constants";
+import { PLANS, RESERVED_SUBDOMAINS, slugifySubdomain } from "../constants";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { auth, db } from "../firebase";
@@ -26,6 +26,8 @@ const SignUpPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [isPaymentPopupOpen, setIsPaymentPopupOpen] = useState(false);
+  // Once the user edits the URL by hand, stop overwriting it from the hospital name.
+  const [subdomainTouched, setSubdomainTouched] = useState(false);
 
   useEffect(() => {
     const planTier = searchParams.get("plan") as PlanTier;
@@ -43,16 +45,20 @@ const SignUpPage: React.FC = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
 
-    if (name === "hospitalName") {
-      const subdomain = value
-        .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, "")
-        .replace(/\s+/g, "-")
-        .replace(/-+/g, "-");
-      setFormData((prev) => ({ ...prev, subdomain }));
+    if (name === "subdomain") {
+      setSubdomainTouched(true);
+      setFormData((prev) => ({ ...prev, subdomain: slugifySubdomain(value) }));
+      return;
     }
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+      ...(name === "hospitalName" && !subdomainTouched
+        ? { subdomain: slugifySubdomain(value) }
+        : {}),
+    }));
   };
 
   // This function is called when the user clicks the "Proceed to Pay" button
@@ -67,8 +73,20 @@ const SignUpPage: React.FC = () => {
       setError("Please fill out all required fields.");
       return;
     }
+    if (formData.password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
     if (formData.password !== confirmPassword) {
       setError("Passwords do not match.");
+      return;
+    }
+    if (formData.subdomain.length < 3) {
+      setError("Your website URL must be at least 3 characters (letters, numbers and hyphens).");
+      return;
+    }
+    if (RESERVED_SUBDOMAINS.includes(formData.subdomain)) {
+      setError("This website URL is reserved. Please choose another.");
       return;
     }
 
@@ -88,7 +106,23 @@ const SignUpPage: React.FC = () => {
         );
       }
       
-      // Step 2: Open the payment popup instead of redirecting
+      // Step 2: make sure the email is free *before* any payment is taken.
+      let emailInUse = false;
+      try {
+        const methods = await auth.fetchSignInMethodsForEmail(formData.email);
+        emailInUse = methods.length > 0;
+      } catch (emailErr: any) {
+        if (emailErr?.code === "auth/invalid-email") {
+          throw new Error("Please enter a valid email address.");
+        }
+        // Any other failure (e.g. email-enumeration protection) is not fatal here;
+        // the account creation step still reports a duplicate email.
+      }
+      if (emailInUse) {
+        throw new Error("This email is already registered. Please log in instead.");
+      }
+
+      // Step 3: Open the payment popup instead of redirecting
       setIsPaymentPopupOpen(true);
 
     } catch (err: any)
@@ -127,17 +161,22 @@ const SignUpPage: React.FC = () => {
             plan: plan.tier,
             status: 'pending',
             location: formData.location, // Save location for public list
+            phone: formData.phone,
         };
         await db.collection("users").doc(createdUser.uid).set(newUserProfile);
         await auth.signOut(); // Ensure user is not auto-logged in
         
         // Redirect to login page after successful creation
-        navigate('/login');
+        navigate('/pending-approval');
 
     } catch (err: any) {
         console.error("[Account Creation Error]", err);
         if (err.code === 'auth/email-already-in-use') {
              setError("This email is already registered. If this was a mistake, please contact support.");
+        } else if (err.code === 'auth/weak-password') {
+             setError("Please choose a stronger password (at least 6 characters).");
+        } else if (err.code === 'auth/invalid-email') {
+             setError("Please enter a valid email address.");
         } else {
             setError("Failed to create your account. Please contact support.");
         }
@@ -208,7 +247,7 @@ const SignUpPage: React.FC = () => {
                           required
                         />
                         <span className="px-4 py-2.5 bg-slate-100 border border-l-0 border-slate-300 rounded-r-lg text-slate-500">
-                          .Medicore.app
+                          .mediverse.app
                         </span>
                       </div>
                     </div>

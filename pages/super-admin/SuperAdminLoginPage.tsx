@@ -30,7 +30,7 @@ const SuperAdminLoginPage: React.FC = () => {
           <div className="text-center mb-8">
             <MedicalIcon className="h-12 w-12 text-primary mx-auto" />
             <h2 className="mt-4 text-3xl font-bold text-white">Super Admin Portal</h2>
-            <p className="mt-2 text-slate-400">Medicore Platform Management</p>
+            <p className="mt-2 text-slate-400">MediVerse Platform Management</p>
           </div>
           <div className="bg-slate-800 rounded-2xl shadow-xl p-8 border border-slate-700">
             <form onSubmit={handleSubmit} className="space-y-6">
