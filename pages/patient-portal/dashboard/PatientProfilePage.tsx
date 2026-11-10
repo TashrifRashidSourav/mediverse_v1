@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { db, auth, storage } from '../../../firebase';
+import { db, auth, getStorage } from '../../../firebase';
 import { Patient } from '../../../types';
 import { UserCircleIcon } from '../../../components/icons/UserCircleIcon';
 import { UploadIcon } from '../../../components/icons/UploadIcon';
@@ -91,6 +91,7 @@ const PatientProfilePage: React.FC = () => {
             };
             
             if (imageFile) {
+                const storage = await getStorage();
                 const storageRef = storage.ref(`profile_pictures/${currentUser.uid}/${imageFile.name}`);
                 const snapshot = await storageRef.put(imageFile);
                 const downloadURL = await snapshot.ref.getDownloadURL();
@@ -120,7 +121,7 @@ const PatientProfilePage: React.FC = () => {
                 <form onSubmit={handleSave} className="space-y-6">
                      <div className="flex items-center gap-6">
                         <div className="w-24 h-24 rounded-full bg-slate-100 flex-shrink-0 flex items-center justify-center overflow-hidden">
-                            {imagePreview ? <img src={imagePreview} alt="Profile" className="w-full h-full object-cover" /> : <UserCircleIcon className="h-16 w-16 text-slate-400"/>}
+                            {imagePreview ? <img loading="lazy" decoding="async" src={imagePreview} alt="Profile" className="w-full h-full object-cover" /> : <UserCircleIcon className="h-16 w-16 text-slate-400"/>}
                         </div>
                         <div className="flex flex-col gap-2">
                              <label htmlFor="imageUpload" className="cursor-pointer text-sm font-semibold text-primary bg-primary-50 hover:bg-primary-100 px-4 py-2 rounded-full text-center flex items-center gap-2">

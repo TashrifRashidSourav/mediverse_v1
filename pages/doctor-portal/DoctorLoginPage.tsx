@@ -39,13 +39,14 @@ const DoctorLoginPage: React.FC = () => {
                 const hospitalData = hospitalDoc.data() as User;
                 setHospitalName(hospitalData.hospitalName);
 
-                // Fetch site settings for branding
-                const settingsDoc = await usersRef.doc(hospitalDoc.id).collection('settings').doc('site').get();
+                // Site settings (branding) and the doctor list are independent: fetch together.
+                const [settingsDoc, doctorsSnapshot] = await Promise.all([
+                    usersRef.doc(hospitalDoc.id).collection('settings').doc('site').get(),
+                    usersRef.doc(hospitalDoc.id).collection('doctors').orderBy('name').get(),
+                ]);
                 if (settingsDoc.exists) {
                     setSiteSettings(settingsDoc.data() as SiteSettings);
                 }
-
-                const doctorsSnapshot = await usersRef.doc(hospitalDoc.id).collection('doctors').orderBy('name').get();
                 const doctorsList = doctorsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Doctor));
                 
                 setDoctors(doctorsList);
@@ -104,7 +105,7 @@ const DoctorLoginPage: React.FC = () => {
             <div className="w-full max-w-sm">
                 <div className="text-center mb-6">
                      {siteSettings?.logoUrl ? (
-                        <img src={siteSettings.logoUrl} alt={`${hospitalName} Logo`} className="h-16 mx-auto mb-2"/>
+                        <img loading="lazy" decoding="async" src={siteSettings.logoUrl} alt={`${hospitalName} Logo`} className="h-16 mx-auto mb-2"/>
                      ) : (
                         <MedicalIcon className="h-12 w-12 mx-auto" style={{ color: themeColor }}/>
                      )}

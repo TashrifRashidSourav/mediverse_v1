@@ -1,60 +1,70 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { Routes, Route, useParams, Navigate } from 'react-router-dom';
 import HomePage from './pages/HomePage';
-import AboutPage from './pages/AboutPage';
-import ContactPage from './pages/ContactPage';
-import SignUpPage from './pages/SignUpPage';
-import LoginPage from './pages/LoginPage';
-import DashboardPage from './pages/DashboardPage';
-import ProtectedRoute from './components/ProtectedRoute';
-import HospitalSitePage from './pages/HospitalSitePage';
+import { RESERVED_SUBDOMAINS } from './constants';
+import ScrollToTop from './components/ScrollToTop';
+const AboutPage = lazy(() => import('./pages/AboutPage'));
+const ContactPage = lazy(() => import('./pages/ContactPage'));
+const SignUpPage = lazy(() => import('./pages/SignUpPage'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const ProtectedRoute = lazy(() => import('./components/ProtectedRoute'));
+const HospitalSitePage = lazy(() => import('./pages/HospitalSitePage'));
 import NotFoundPage from './pages/NotFoundPage';
-import DashboardHome from './pages/dashboard/DashboardHome';
-import DoctorManagement from './pages/dashboard/DoctorManagement';
-import PatientManagement from './pages/dashboard/PatientManagement';
-import AppointmentManagement from './pages/dashboard/AppointmentManagement';
-import BillingPage from './pages/dashboard/BillingPage';
-import InventoryPage from './pages/dashboard/InventoryPage';
-import ReportsPage from './pages/dashboard/ReportsPage';
-import WebsiteSettings from './pages/dashboard/WebsiteSettings';
-import PatientLoginPage from './pages/patient-portal/PatientLoginPage';
-import PatientSignUpPage from './pages/patient-portal/PatientSignUpPage';
-import PatientDashboardPage from './pages/patient-portal/PatientDashboardPage';
-import PatientProtectedRoute from './components/patient-portal/PatientProtectedRoute';
-import PatientDashboardHome from './pages/patient-portal/dashboard/PatientDashboardHome';
-import PatientProfilePage from './pages/patient-portal/dashboard/PatientProfilePage';
-import PatientAppointmentsPage from './pages/patient-portal/dashboard/PatientAppointmentsPage';
-import PatientPrescriptionsPage from './pages/patient-portal/dashboard/PatientPrescriptionsPage';
-import PatientBillingPage from './pages/patient-portal/dashboard/PatientBillingPage';
-import BookAppointmentPage from './pages/patient-portal/BookAppointmentPage';
-import VideoCallPage from './pages/VideoCallPage';
-import AuthenticatedRoute from './components/AuthenticatedRoute';
-import PendingApprovalPage from './pages/PendingApprovalPage';
-import PaymentSuccessPage from './pages/PaymentSuccessPage';
-import PaymentFailPage from './pages/PaymentFailPage';
-import PaymentCancelPage from './pages/PaymentCancelPage';
-import HospitalListPage from './pages/HospitalListPage';
-import MediDoctorPage from './pages/MediDoctorPage';
-import AdvertisePage from './pages/dashboard/AdvertisePage';
-import ChatManagement from './pages/dashboard/ChatManagement';
-import PatientChatPage from './pages/patient-portal/dashboard/PatientChatPage';
+const DashboardHome = lazy(() => import('./pages/dashboard/DashboardHome'));
+const DoctorManagement = lazy(() => import('./pages/dashboard/DoctorManagement'));
+const PatientManagement = lazy(() => import('./pages/dashboard/PatientManagement'));
+const AppointmentManagement = lazy(() => import('./pages/dashboard/AppointmentManagement'));
+const BillingPage = lazy(() => import('./pages/dashboard/BillingPage'));
+const InventoryPage = lazy(() => import('./pages/dashboard/InventoryPage'));
+const ReportsPage = lazy(() => import('./pages/dashboard/ReportsPage'));
+const WebsiteSettings = lazy(() => import('./pages/dashboard/WebsiteSettings'));
+const PatientLoginPage = lazy(() => import('./pages/patient-portal/PatientLoginPage'));
+const PatientSignUpPage = lazy(() => import('./pages/patient-portal/PatientSignUpPage'));
+const PatientDashboardPage = lazy(() => import('./pages/patient-portal/PatientDashboardPage'));
+const PatientProtectedRoute = lazy(() => import('./components/patient-portal/PatientProtectedRoute'));
+const PatientDashboardHome = lazy(() => import('./pages/patient-portal/dashboard/PatientDashboardHome'));
+const PatientProfilePage = lazy(() => import('./pages/patient-portal/dashboard/PatientProfilePage'));
+const PatientAppointmentsPage = lazy(() => import('./pages/patient-portal/dashboard/PatientAppointmentsPage'));
+const PatientPrescriptionsPage = lazy(() => import('./pages/patient-portal/dashboard/PatientPrescriptionsPage'));
+const PatientBillingPage = lazy(() => import('./pages/patient-portal/dashboard/PatientBillingPage'));
+const BookAppointmentPage = lazy(() => import('./pages/patient-portal/BookAppointmentPage'));
+const VideoCallPage = lazy(() => import('./pages/VideoCallPage'));
+const AuthenticatedRoute = lazy(() => import('./components/AuthenticatedRoute'));
+const PendingApprovalPage = lazy(() => import('./pages/PendingApprovalPage'));
+const PaymentSuccessPage = lazy(() => import('./pages/PaymentSuccessPage'));
+const PaymentFailPage = lazy(() => import('./pages/PaymentFailPage'));
+const PaymentCancelPage = lazy(() => import('./pages/PaymentCancelPage'));
+const HospitalListPage = lazy(() => import('./pages/HospitalListPage'));
+const MediDoctorPage = lazy(() => import('./pages/MediDoctorPage'));
+const AdvertisePage = lazy(() => import('./pages/dashboard/AdvertisePage'));
+const ChatManagement = lazy(() => import('./pages/dashboard/ChatManagement'));
+const PatientChatPage = lazy(() => import('./pages/patient-portal/dashboard/PatientChatPage'));
 
 // Doctor Portal Imports
-import DoctorLoginPage from './pages/doctor-portal/DoctorLoginPage';
-import DoctorProtectedRoute from './components/doctor-portal/DoctorProtectedRoute';
-import DoctorDashboardPage from './pages/doctor-portal/DoctorDashboardPage';
-import DoctorDashboardHome from './pages/doctor-portal/dashboard/DoctorDashboardHome';
-import DoctorPatientAccessPage from './pages/doctor-portal/dashboard/DoctorPatientAccessPage';
-import DoctorPrescriptionPage from './pages/doctor-portal/dashboard/DoctorPrescriptionPage';
+const DoctorLoginPage = lazy(() => import('./pages/doctor-portal/DoctorLoginPage'));
+const DoctorProtectedRoute = lazy(() => import('./components/doctor-portal/DoctorProtectedRoute'));
+const DoctorDashboardPage = lazy(() => import('./pages/doctor-portal/DoctorDashboardPage'));
+const DoctorDashboardHome = lazy(() => import('./pages/doctor-portal/dashboard/DoctorDashboardHome'));
+const DoctorPatientAccessPage = lazy(() => import('./pages/doctor-portal/dashboard/DoctorPatientAccessPage'));
+const DoctorPrescriptionPage = lazy(() => import('./pages/doctor-portal/dashboard/DoctorPrescriptionPage'));
 
 // Super Admin Imports
-import SuperAdminLoginPage from './pages/super-admin/SuperAdminLoginPage';
-import SuperAdminDashboardPage from './pages/super-admin/SuperAdminDashboardPage';
-import SuperAdminProtectedRoute from './components/super-admin/SuperAdminProtectedRoute';
+const SuperAdminLoginPage = lazy(() => import('./pages/super-admin/SuperAdminLoginPage'));
+const SuperAdminDashboardPage = lazy(() => import('./pages/super-admin/SuperAdminDashboardPage'));
+const SuperAdminProtectedRoute = lazy(() => import('./components/super-admin/SuperAdminProtectedRoute'));
 
+
+const PageLoader: React.FC = () => (
+  <div className="min-h-screen flex items-center justify-center bg-slate-50">
+    <div className="h-10 w-10 rounded-full border-4 border-slate-200 border-t-primary animate-spin" />
+  </div>
+);
 
 const App: React.FC = () => {
   return (
+    <Suspense fallback={<PageLoader />}>
+    <ScrollToTop />
     <Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/about" element={<AboutPage />} />
@@ -153,6 +163,7 @@ const App: React.FC = () => {
       {/* Fallback 404 Not Found Route */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
+    </Suspense>
   );
 };
 
@@ -162,9 +173,7 @@ interface HospitalSitePageWrapperProps {
 
 const HospitalSitePageWrapper: React.FC<HospitalSitePageWrapperProps> = ({ page = 'home' }) => {
     const { subdomain } = useParams<{ subdomain: string }>();
-    const reservedPaths = ['signup', 'login', 'patient', 'doctor-portal', 'book-appointment', 'meet', 'pending-approval', 'super-admin', 'payment', 'hospitals', 'doctors', 'about', 'contact'];
-
-    if (subdomain && reservedPaths.includes(subdomain)) {
+    if (subdomain && RESERVED_SUBDOMAINS.includes(subdomain)) {
         return <NotFoundPage />;
     }
     

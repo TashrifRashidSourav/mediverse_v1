@@ -4,10 +4,6 @@ import { PrinterIcon } from './icons/PrinterIcon';
 import { DownloadIcon } from './icons/DownloadIcon';
 import { XIcon } from './icons/XIcon';
 
-// Declare globals from CDN to prevent TypeScript errors
-declare const html2canvas: any;
-declare const jspdf: any;
-
 interface PrescriptionViewProps {
     prescription: Prescription;
     onClose: () => void;
@@ -19,19 +15,22 @@ const PrescriptionView: React.FC<PrescriptionViewProps> = ({ prescription, onClo
 
     const handlePrint = () => window.print();
 
-    const handleExportPDF = () => {
+    const handleExportPDF = async () => {
         const input = viewRef.current;
         if (!input) return;
-        const { jsPDF } = jspdf;
+        // Heavy PDF libs are loaded on demand, only when the user exports.
+        const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+            import('html2canvas'),
+            import('jspdf'),
+        ]);
 
-        html2canvas(input, { scale: 2 }).then((canvas: any) => {
-            const imgData = canvas.toDataURL('image/png');
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-            pdf.save(`prescription-${prescription.patientName}-${new Date(prescription.date).toISOString().split('T')[0]}.pdf`);
-        });
+        const canvas = await html2canvas(input, { scale: 2 });
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        pdf.save(`prescription-${prescription.patientName}-${new Date(prescription.date).toISOString().split('T')[0]}.pdf`);
     };
 
     return (

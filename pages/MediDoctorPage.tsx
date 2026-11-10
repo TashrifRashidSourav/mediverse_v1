@@ -1,10 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { db } from '../firebase';
+import { db, firebase } from '../firebase';
 import { AdvertisedDoctor, User } from '../types';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { UserCircleIcon } from '../components/icons/UserCircleIcon';
+
+// Hospitals fetched per request. Doctors are shown from the hospitals loaded so far.
+const PAGE_SIZE = 10;
+
+const getTime = (date: any): number => {
+    if (!date) return 0;
+    if (typeof date.toMillis === 'function') return date.toMillis(); // Firestore Timestamp
+    if (date instanceof Date) return date.getTime(); // JS Date object
+    const parsed = new Date(date).getTime(); // String or other parsable format
+    return isNaN(parsed) ? 0 : parsed;
+};
 
 const MediDoctorPage: React.FC = () => {
     const location = useLocation();
@@ -17,55 +28,52 @@ const MediDoctorPage: React.FC = () => {
     const [specializationSearch, setSpecializationSearch] = useState('');
 
 
-    useEffect(() => {
-        const fetchDoctors = async () => {
-            setIsLoading(true);
-            try {
-                // Fetch all users and filter client-side to find approved hospitals
-                const snapshot = await db.collection('users').get();
-                const allAdvertisedDoctors: AdvertisedDoctor[] = [];
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const [hasMore, setHasMore] = useState(false);
+    const lastDocRef = useRef<firebase.firestore.QueryDocumentSnapshot | null>(null);
 
-                const approvedHospitals = snapshot.docs.filter(doc => {
-                    const data = doc.data() as User;
-                    // Show hospitals that are 'approved' OR have no status field (for legacy compatibility)
-                    return data.status === 'approved' || !data.status;
-                });
-
-                approvedHospitals.forEach(doc => {
-                    const hospital = doc.data() as User;
-                    if (hospital.advertisedDoctors && Array.isArray(hospital.advertisedDoctors)) {
-                        const doctorsFromHospital = hospital.advertisedDoctors.map(ad => ({
-                            ...ad,
-                            hospitalId: doc.id,
-                            hospitalName: hospital.hospitalName,
-                            subdomain: hospital.subdomain,
-                        }));
-                        allAdvertisedDoctors.push(...doctorsFromHospital);
-                    }
-                });
-                
-                // Robust sorting for different date/timestamp formats
-                const getTime = (date: any): number => {
-                    if (!date) return 0;
-                    if (typeof date.toMillis === 'function') return date.toMillis(); // Firestore Timestamp
-                    if (date instanceof Date) return date.getTime(); // JS Date object
-                    const parsed = new Date(date).getTime(); // String or other parsable format
-                    return isNaN(parsed) ? 0 : parsed;
-                };
-
-                allAdvertisedDoctors.sort((a, b) => getTime(b.advertisedAt) - getTime(a.advertisedAt));
-                
-                setAllDoctors(allAdvertisedDoctors);
-                setFilteredDoctors(allAdvertisedDoctors);
-
-            } catch (error) {
-                console.error("Error fetching advertised doctors:", error);
-            } finally {
-                setIsLoading(false);
+    const loadPage = useCallback(async (initial: boolean) => {
+        initial ? setIsLoading(true) : setIsLoadingMore(true);
+        try {
+            // Only approved hospitals are fetched, one page at a time.
+            let query = db.collection('users')
+                .where('status', '==', 'approved')
+                .orderBy(firebase.firestore.FieldPath.documentId())
+                .limit(PAGE_SIZE);
+            if (!initial && lastDocRef.current) {
+                query = query.startAfter(lastDocRef.current);
             }
-        };
-        fetchDoctors();
+            const snapshot = await query.get();
+
+            const pageDoctors: AdvertisedDoctor[] = [];
+            snapshot.docs.forEach(doc => {
+                const hospital = doc.data() as User;
+                if (Array.isArray(hospital.advertisedDoctors)) {
+                    pageDoctors.push(...hospital.advertisedDoctors.map(ad => ({
+                        ...ad,
+                        hospitalId: doc.id,
+                        hospitalName: hospital.hospitalName,
+                        subdomain: hospital.subdomain,
+                    })));
+                }
+            });
+
+            lastDocRef.current = snapshot.docs[snapshot.docs.length - 1] ?? null;
+            setHasMore(snapshot.docs.length === PAGE_SIZE);
+            setAllDoctors(prev =>
+                (initial ? pageDoctors : [...prev, ...pageDoctors]).sort((a, b) => getTime(b.advertisedAt) - getTime(a.advertisedAt))
+            );
+        } catch (error) {
+            console.error("Error fetching advertised doctors:", error);
+        } finally {
+            setIsLoading(false);
+            setIsLoadingMore(false);
+        }
     }, []);
+
+    useEffect(() => {
+        loadPage(true);
+    }, [loadPage]);
 
     useEffect(() => {
         let result = allDoctors;
@@ -152,7 +160,7 @@ const MediDoctorPage: React.FC = () => {
                         <div key={`${doctor.hospitalId}-${doctor.id}`} className="bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col group transform hover:-translate-y-1 transition-transform duration-300">
                             <div className="h-56 bg-slate-200">
                                 {doctor.imageUrl ? (
-                                    <img src={doctor.imageUrl} alt={doctor.name} className="w-full h-full object-cover"/>
+                                    <img loading="lazy" decoding="async" src={doctor.imageUrl} alt={doctor.name} className="w-full h-full object-cover"/>
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center">
                                         <UserCircleIcon className="w-24 h-24 text-slate-400" />
@@ -180,6 +188,18 @@ const MediDoctorPage: React.FC = () => {
                             </div>
                         </div>
                     ))}
+                </div>
+            )}
+
+            {hasMore && !isLoading && (
+                <div className="text-center mt-10">
+                    <button
+                        onClick={() => loadPage(false)}
+                        disabled={isLoadingMore}
+                        className="bg-primary text-white font-bold py-2.5 px-8 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-60"
+                    >
+                        {isLoadingMore ? 'Loading...' : 'Load more doctors'}
+                    </button>
                 </div>
             )}
         </>

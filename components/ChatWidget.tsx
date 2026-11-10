@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { GoogleGenAI } from '@google/genai';
+import type { GoogleGenAI } from '@google/genai';
 import { auth, db, firebase } from '../firebase';
 import { PlanTier, ChatMessage } from '../types';
 import { ChatBubbleIcon } from './icons/ChatBubbleIcon';
@@ -33,9 +33,13 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ hospitalId, hospitalName, plan,
 
     useEffect(() => {
         const apiKey = process.env.API_KEY;
-        if (apiKey) {
-            setAi(new GoogleGenAI({ apiKey }));
-        }
+        if (!apiKey) return;
+        // Load the AI SDK on demand so it is not part of the initial page load.
+        let cancelled = false;
+        import('@google/genai').then(({ GoogleGenAI }) => {
+            if (!cancelled) setAi(new GoogleGenAI({ apiKey }));
+        }).catch(err => console.error('Failed to load AI SDK:', err));
+        return () => { cancelled = true; };
     }, []);
 
     useEffect(() => {

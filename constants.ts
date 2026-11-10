@@ -1,5 +1,24 @@
 import { type Plan, PlanTier } from './types';
 
+/**
+ * First URL segments that belong to the app itself. A hospital cannot take one of
+ * these as its subdomain, otherwise its public site would be unreachable.
+ */
+export const RESERVED_SUBDOMAINS: readonly string[] = [
+  'signup', 'login', 'patient', 'doctor-portal', 'book-appointment', 'meet',
+  'pending-approval', 'super-admin', 'payment', 'hospitals', 'doctors', 'about',
+  'contact', 'dashboard', 'admin', 'api', 'www', 'app', 'static', 'assets',
+];
+
+/** Turn free text into a URL-safe subdomain (lowercase letters, digits, single hyphens). */
+export const slugifySubdomain = (value: string): string =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-/, '');
+
 export const PLANS: Plan[] = [
   {
     tier: PlanTier.General,

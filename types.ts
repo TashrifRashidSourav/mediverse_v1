@@ -30,6 +30,7 @@ export interface User {
   plan: PlanTier;
   status?: 'pending' | 'approved' | 'rejected';
   location?: string;
+  phone?: string;
   logoUrl?: string;
   advertisedDoctors?: AdvertisedDoctor[];
 }

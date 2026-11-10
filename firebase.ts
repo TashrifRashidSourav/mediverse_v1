@@ -2,7 +2,6 @@
 import firebase from "firebase/compat/app";
 import "firebase/compat/auth";
 import "firebase/compat/firestore";
-import "firebase/compat/storage";
 import { firebaseConfig } from "./firebaseConfig";
 
 if (!firebase.apps.length) {
@@ -14,7 +13,9 @@ const db = firebase.firestore();
 
 // TS-safe: compat supports experimentalForceLongPolling; remove useFetchStreams
 // Removing long polling to use faster WebSockets
-db.settings({});
+// Optional fields left undefined (e.g. a walk-in patient with no authUid) are
+// skipped instead of making the whole write throw.
+db.settings({ ignoreUndefinedProperties: true });
 
 // Optional: persistence (comment out if it causes issues in your browser)
 firebase
@@ -29,7 +30,15 @@ firebase
 
 // ---- Auth ----
 const auth = firebase.auth();
-const storage = firebase.storage();
+
+/**
+ * Storage is only needed for file uploads, so it is loaded on demand
+ * instead of being bundled into every page load.
+ */
+async function getStorage() {
+  await import("firebase/compat/storage");
+  return firebase.storage();
+}
 
 /**
  * Dev helper: email/password login.
@@ -41,4 +50,4 @@ export async function loginDevWithEmail(email: string, password: string) {
   return cred.user;
 }
 
-export { auth, db, storage, firebase };
+export { auth, db, getStorage, firebase };
